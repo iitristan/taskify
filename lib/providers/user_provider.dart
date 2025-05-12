@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 
 class UserProvider with ChangeNotifier {
   String _name = 'User';
   String _email = 'user@example.com';
-  String _profileImagePath = '';
 
   String get name => _name;
   String get email => _email;
-  String get profileImagePath => _profileImagePath;
 
   UserProvider() {
     _loadUserData();
@@ -19,15 +16,10 @@ class UserProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _name = prefs.getString('user_name') ?? 'User';
     _email = prefs.getString('user_email') ?? 'user@example.com';
-    _profileImagePath = prefs.getString('profile_image_path') ?? '';
     notifyListeners();
   }
 
-  Future<void> updateUserData({
-    String? name,
-    String? email,
-    String? profileImagePath,
-  }) async {
+  Future<void> updateUserData({String? name, String? email}) async {
     final prefs = await SharedPreferences.getInstance();
 
     if (name != null) {
@@ -38,11 +30,6 @@ class UserProvider with ChangeNotifier {
     if (email != null) {
       _email = email;
       await prefs.setString('user_email', email);
-    }
-
-    if (profileImagePath != null) {
-      _profileImagePath = profileImagePath;
-      await prefs.setString('profile_image_path', profileImagePath);
     }
 
     notifyListeners();

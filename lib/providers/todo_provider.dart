@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/todo.dart';
@@ -40,7 +41,7 @@ class TodoProvider with ChangeNotifier {
       await loadTodos();
       _isInitialized = true;
     } catch (e) {
-      print('Database initialization error: $e');
+      debugPrint('Database initialization error: $e');
       // For web platform or when database fails, use in-memory data
       _todos = [
         Todo(
@@ -75,15 +76,26 @@ class TodoProvider with ChangeNotifier {
 
     try {
       final List<Map<String, dynamic>> maps = await _database!.query('todos');
-      _todos = List.generate(maps.length, (i) => Todo.fromMap(maps[i]));
+      _todos = [];
+
+      for (var map in maps) {
+        try {
+          final todo = Todo.fromMap(map);
+          _todos.add(todo);
+        } catch (e) {
+          debugPrint('Error parsing todo: $e');
+        }
+      }
+
       notifyListeners();
     } catch (e) {
-      print('Error loading todos: $e');
+      debugPrint('Error loading todos: $e');
     }
   }
 
   Future<void> addTodo(Todo todo) async {
     try {
+      debugPrint('Adding todo with date: ${todo.dueDate}');
       if (_database != null) {
         final id = await _database!.insert(
           'todos',
@@ -120,12 +132,13 @@ class TodoProvider with ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print('Error adding todo: $e');
+      debugPrint('Error adding todo: $e');
     }
   }
 
   Future<void> updateTodo(Todo todo) async {
     try {
+      debugPrint('Updating todo with date: ${todo.dueDate}');
       if (_database != null) {
         await _database!.update(
           'todos',
@@ -141,7 +154,7 @@ class TodoProvider with ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error updating todo: $e');
+      debugPrint('Error updating todo: $e');
     }
   }
 
@@ -154,23 +167,38 @@ class TodoProvider with ChangeNotifier {
       _todos.removeWhere((todo) => todo.id == id);
       notifyListeners();
     } catch (e) {
-      print('Error deleting todo: $e');
+      debugPrint('Error deleting todo: $e');
     }
   }
 
   List<Todo> getTodosForDate(DateTime date) {
-    return _todos.where((todo) {
-      return todo.dueDate.year == date.year &&
-          todo.dueDate.month == date.month &&
-          todo.dueDate.day == date.day;
-    }).toList();
+    try {
+      return _todos.where((todo) {
+        return todo.dueDate.year == date.year &&
+            todo.dueDate.month == date.month &&
+            todo.dueDate.day == date.day;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error filtering todos by date: $e');
+      return [];
+    }
   }
 
   List<Todo> getTodosByPriority(String priority) {
-    return _todos.where((todo) => todo.priority == priority).toList();
+    try {
+      return _todos.where((todo) => todo.priority == priority).toList();
+    } catch (e) {
+      debugPrint('Error filtering todos by priority: $e');
+      return [];
+    }
   }
 
   List<Todo> getTodosByCategory(int categoryId) {
-    return _todos.where((todo) => todo.categoryId == categoryId).toList();
+    try {
+      return _todos.where((todo) => todo.categoryId == categoryId).toList();
+    } catch (e) {
+      debugPrint('Error filtering todos by category: $e');
+      return [];
+    }
   }
 }

@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class Todo {
   final int? id;
   final String title;
@@ -33,11 +35,20 @@ class Todo {
   }
 
   factory Todo.fromMap(Map<String, dynamic> map) {
+    DateTime parsedDate;
+    try {
+      parsedDate = DateTime.parse(map['dueDate']);
+    } catch (e) {
+      debugPrint('Error parsing date: ${map['dueDate']} - $e');
+      // Fallback to current date if parsing fails
+      parsedDate = DateTime.now();
+    }
+
     return Todo(
       id: map['id'],
-      title: map['title'],
-      description: map['description'],
-      dueDate: DateTime.parse(map['dueDate']),
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      dueDate: parsedDate,
       isCompleted: map['isCompleted'] == 1,
       priority: map['priority'] ?? 'Medium',
       categoryId: map['categoryId'],
@@ -65,5 +76,10 @@ class Todo {
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
     );
+  }
+
+  @override
+  String toString() {
+    return 'Todo(id: $id, title: $title, dueDate: $dueDate, priority: $priority)';
   }
 }
