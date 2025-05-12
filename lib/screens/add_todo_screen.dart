@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/todo.dart';
 import '../providers/todo_provider.dart';
+import '../providers/category_provider.dart';
+import '../models/category.dart';
 import 'package:intl/intl.dart';
 
 class AddTodoScreen extends StatefulWidget {
   final DateTime selectedDate;
+  final Todo? todo; // Optional todo for editing
 
-  const AddTodoScreen({super.key, required this.selectedDate});
+  const AddTodoScreen({super.key, required this.selectedDate, this.todo});
 
   @override
   State<AddTodoScreen> createState() => _AddTodoScreenState();
@@ -20,8 +23,11 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   final _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String _priority = 'Medium';
+  int? _selectedCategoryId;
+  String _selectedCategoryName = 'Default';
   late AnimationController _animationController;
   late Animation<double> _animation;
+  bool _isEditing = false;
 
   final List<String> _priorities = ['Low', 'Medium', 'High'];
 
@@ -29,6 +35,18 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate;
+    _isEditing = widget.todo != null;
+
+    // Initialize with existing todo data if editing
+    if (_isEditing) {
+      _titleController.text = widget.todo!.title;
+      _descriptionController.text = widget.todo!.description;
+      _selectedDate = widget.todo!.dueDate;
+      _priority = widget.todo!.priority;
+      _selectedCategoryId = widget.todo!.categoryId;
+      _selectedCategoryName = widget.todo!.categoryName;
+    }
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -38,6 +56,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
       curve: Curves.easeInOut,
     );
     _animationController.forward();
+
+    // Initialize category provider
+    Future.microtask(() => context.read<CategoryProvider>().initDatabase());
   }
 
   @override
@@ -79,9 +100,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Add Task',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          _isEditing ? 'Edit Task' : 'Add Task',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
@@ -210,6 +231,114 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                   ),
                   const SizedBox(height: 24),
 
+                  // Category Selector
+                  Text(
+                    'Category',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onBackground,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer<CategoryProvider>(
+                    builder: (context, categoryProvider, child) {
+                      final categories = categoryProvider.categories;
+
+                      if (categories.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.primary.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.category, color: colorScheme.primary),
+                              const SizedBox(width: 16),
+                              Text(
+                                'Default',
+                                style: textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: colorScheme.primary.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedCategoryId,
+                            hint: Text(
+                              'Select Category',
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: colorScheme.primary,
+                            ),
+                            isExpanded: true,
+                            dropdownColor: colorScheme.surface,
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                            items:
+                                categories.map((category) {
+                                  return DropdownMenuItem<int>(
+                                    value: category.id,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          category.icon,
+                                          color: category.color,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(category.name),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                            onChanged: (int? value) {
+                              setState(() {
+                                _selectedCategoryId = value;
+                                if (value != null) {
+                                  final category = categories.firstWhere(
+                                    (cat) => cat.id == value,
+                                  );
+                                  _selectedCategoryName = category.name;
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
                   // Priority Selector
                   Text(
                     'Priority',
@@ -294,18 +423,36 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                   ElevatedButton.icon(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        final todo = Todo(
-                          title: _titleController.text,
-                          description: _descriptionController.text,
-                          dueDate: _selectedDate,
-                          priority: _priority,
-                        );
-                        context.read<TodoProvider>().addTodo(todo);
+                        if (_isEditing) {
+                          // Update existing todo
+                          final updatedTodo = Todo(
+                            id: widget.todo!.id,
+                            title: _titleController.text,
+                            description: _descriptionController.text,
+                            dueDate: _selectedDate,
+                            priority: _priority,
+                            categoryId: _selectedCategoryId,
+                            categoryName: _selectedCategoryName,
+                            isCompleted: widget.todo!.isCompleted,
+                          );
+                          context.read<TodoProvider>().updateTodo(updatedTodo);
+                        } else {
+                          // Create new todo
+                          final todo = Todo(
+                            title: _titleController.text,
+                            description: _descriptionController.text,
+                            dueDate: _selectedDate,
+                            priority: _priority,
+                            categoryId: _selectedCategoryId,
+                            categoryName: _selectedCategoryName,
+                          );
+                          context.read<TodoProvider>().addTodo(todo);
+                        }
                         Navigator.pop(context);
                       }
                     },
-                    icon: const Icon(Icons.add_task),
-                    label: const Text('Add Task'),
+                    icon: Icon(_isEditing ? Icons.save : Icons.add_task),
+                    label: Text(_isEditing ? 'Update Task' : 'Add Task'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

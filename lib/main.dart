@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'providers/todo_provider.dart';
+import 'providers/category_provider.dart';
+import 'providers/reminder_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -13,8 +15,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => TodoProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => TodoProvider()),
+        ChangeNotifierProvider(create: (context) => CategoryProvider()),
+        ChangeNotifierProvider(create: (context) => ReminderProvider()),
+      ],
       child: MaterialApp(
         title: 'Taskify',
         debugShowCheckedModeBanner: false,

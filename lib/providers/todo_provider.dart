@@ -19,7 +19,7 @@ class TodoProvider with ChangeNotifier {
         join(await getDatabasesPath(), 'todo_database.db'),
         onCreate: (db, version) {
           return db.execute(
-            'CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, dueDate TEXT, isCompleted INTEGER, priority TEXT)',
+            'CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, dueDate TEXT, isCompleted INTEGER, priority TEXT, categoryId INTEGER, categoryName TEXT)',
           );
         },
         onUpgrade: (db, oldVersion, newVersion) async {
@@ -28,8 +28,14 @@ class TodoProvider with ChangeNotifier {
               'ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT "Medium"',
             );
           }
+          if (oldVersion < 3) {
+            await db.execute('ALTER TABLE todos ADD COLUMN categoryId INTEGER');
+            await db.execute(
+              'ALTER TABLE todos ADD COLUMN categoryName TEXT DEFAULT "Default"',
+            );
+          }
         },
-        version: 2,
+        version: 3,
       );
       await loadTodos();
       _isInitialized = true;
@@ -92,6 +98,8 @@ class TodoProvider with ChangeNotifier {
             dueDate: todo.dueDate,
             isCompleted: todo.isCompleted,
             priority: todo.priority,
+            categoryId: todo.categoryId,
+            categoryName: todo.categoryName,
           ),
         );
       } else {
@@ -105,6 +113,8 @@ class TodoProvider with ChangeNotifier {
             dueDate: todo.dueDate,
             isCompleted: todo.isCompleted,
             priority: todo.priority,
+            categoryId: todo.categoryId,
+            categoryName: todo.categoryName,
           ),
         );
       }
@@ -158,5 +168,9 @@ class TodoProvider with ChangeNotifier {
 
   List<Todo> getTodosByPriority(String priority) {
     return _todos.where((todo) => todo.priority == priority).toList();
+  }
+
+  List<Todo> getTodosByCategory(int categoryId) {
+    return _todos.where((todo) => todo.categoryId == categoryId).toList();
   }
 }

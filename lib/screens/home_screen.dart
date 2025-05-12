@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/todo_provider.dart';
+import '../providers/category_provider.dart';
+import '../models/todo.dart';
 import 'add_todo_screen.dart';
 import 'calendar_screen.dart';
+import 'categories_screen.dart';
+import 'reminders_screen.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -17,6 +21,12 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _controller;
   late Animation<double> _animation;
 
+  // Filter variables
+  String? _priorityFilter;
+  bool? _completionFilter;
+  int? _categoryFilter;
+  String? _categoryName;
+
   @override
   void initState() {
     super.initState();
@@ -27,7 +37,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
 
-    Future.microtask(() => context.read<TodoProvider>().initDatabase());
+    Future.microtask(() {
+      context.read<TodoProvider>().initDatabase();
+      context.read<CategoryProvider>().initDatabase();
+    });
     _controller.forward();
   }
 
@@ -176,13 +189,25 @@ class _HomeScreenState extends State<HomeScreen>
                         icon: Icons.category,
                         label: 'Categories',
                         color: colorScheme.tertiary,
-                        onTap: () {},
+                        onTap:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const CategoriesScreen(),
+                              ),
+                            ),
                       ),
                       _buildDashboardOption(
                         icon: Icons.notifications,
                         label: 'Reminders',
                         color: colorScheme.error,
-                        onTap: () {},
+                        onTap:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RemindersScreen(),
+                              ),
+                            ),
                       ),
                     ],
                   ),
@@ -212,18 +237,21 @@ class _HomeScreenState extends State<HomeScreen>
                         ],
                       ),
                       TextButton.icon(
-                        onPressed: () {},
+                        onPressed: () => _showFilterDialog(context),
                         icon: Icon(
                           Icons.filter_list,
                           color: colorScheme.primary,
                           size: 20,
                         ),
                         label: Text(
-                          'Filter',
+                          _hasActiveFilters() ? 'Filtered' : 'Filter',
                           style: TextStyle(color: colorScheme.primary),
                         ),
                         style: TextButton.styleFrom(
-                          backgroundColor: colorScheme.primary.withOpacity(0.1),
+                          backgroundColor:
+                              _hasActiveFilters()
+                                  ? colorScheme.primary.withOpacity(0.2)
+                                  : colorScheme.primary.withOpacity(0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -234,96 +262,197 @@ class _HomeScreenState extends State<HomeScreen>
 
                   const SizedBox(height: 16),
 
-                  Card(
-                    color: colorScheme.surface,
-                    elevation: 8,
-                    shadowColor: Colors.black.withOpacity(0.2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildTaskTile(
-                            'Complete this Sunday',
-                            'Tasks · Sun, 27 Oct',
-                            colorScheme.primary,
-                          ),
-                          const Divider(height: 24),
-                          _buildTaskTile(
-                            'Take the trash out',
-                            'Tasks',
-                            colorScheme.secondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  // Tasks for today
+                  Consumer<TodoProvider>(
+                    builder: (context, todoProvider, child) {
+                      var todayTasks = todoProvider.getTodosForDate(
+                        DateTime.now(),
+                      );
 
-                  const SizedBox(height: 24),
+                      // Apply filters
+                      if (_priorityFilter != null) {
+                        todayTasks =
+                            todayTasks
+                                .where(
+                                  (todo) => todo.priority == _priorityFilter,
+                                )
+                                .toList();
+                      }
 
-                  // Stats Card
-                  Card(
-                    color: colorScheme.primary,
-                    elevation: 8,
-                    shadowColor: colorScheme.primary.withOpacity(0.4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.insights,
-                              color: Colors.white,
-                              size: 32,
-                            ),
+                      if (_completionFilter != null) {
+                        todayTasks =
+                            todayTasks
+                                .where(
+                                  (todo) =>
+                                      todo.isCompleted == _completionFilter,
+                                )
+                                .toList();
+                      }
+
+                      if (_categoryFilter != null) {
+                        todayTasks =
+                            todayTasks
+                                .where(
+                                  (todo) => todo.categoryId == _categoryFilter,
+                                )
+                                .toList();
+                      }
+
+                      if (todayTasks.isEmpty) {
+                        return Card(
+                          color: colorScheme.surface,
+                          elevation: 8,
+                          shadowColor: Colors.black.withOpacity(0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Icon(
+                                  Icons.check_circle_outline,
+                                  size: 48,
+                                  color: colorScheme.primary.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 16),
                                 Text(
-                                  'Weekly Progress',
+                                  'No Tasks Today',
                                   style: textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
+                                    color: colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 8),
                                 Text(
-                                  '4 of 10 tasks completed',
+                                  'Enjoy your day off!',
                                   style: textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.7,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          const CircleAvatar(
-                            radius: 24,
-                            backgroundColor: Colors.white,
-                            child: Text(
-                              '40%',
-                              style: TextStyle(
-                                color: Color(0xFF7C4DFF),
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        );
+                      }
+
+                      return Card(
+                        color: colorScheme.surface,
+                        elevation: 8,
+                        shadowColor: Colors.black.withOpacity(0.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children:
+                                todayTasks.map((todo) {
+                                  Color priorityColor;
+                                  switch (todo.priority) {
+                                    case 'Low':
+                                      priorityColor = Colors.green;
+                                      break;
+                                    case 'High':
+                                      priorityColor = Colors.red;
+                                      break;
+                                    default:
+                                      priorityColor = Colors.orange;
+                                  }
+
+                                  return Column(
+                                    children: [
+                                      _buildTaskTile(todo, priorityColor),
+                                      if (todayTasks.last != todo)
+                                        const Divider(height: 24),
+                                    ],
+                                  );
+                                }).toList(),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Stats Card
+                  Consumer<TodoProvider>(
+                    builder: (context, todoProvider, child) {
+                      final allTasks = todoProvider.todos.length;
+                      final completedTasks =
+                          todoProvider.todos
+                              .where((todo) => todo.isCompleted)
+                              .length;
+                      final completionPercentage =
+                          allTasks > 0
+                              ? (completedTasks / allTasks * 100).round()
+                              : 0;
+
+                      return Card(
+                        color: colorScheme.primary,
+                        elevation: 8,
+                        shadowColor: colorScheme.primary.withOpacity(0.4),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.insights,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Weekly Progress',
+                                      style: textTheme.titleMedium?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$completedTasks of $allTasks tasks completed',
+                                      style: textTheme.bodyMedium?.copyWith(
+                                        color: Colors.white.withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.white,
+                                child: Text(
+                                  '$completionPercentage%',
+                                  style: TextStyle(
+                                    color: colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -387,18 +516,27 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildTaskTile(String title, String subtitle, Color accentColor) {
+  Widget _buildTaskTile(Todo todo, Color accentColor) {
     return Row(
       children: [
-        Container(
-          height: 24,
-          width: 24,
-          decoration: BoxDecoration(
-            color: accentColor.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: accentColor, width: 2),
+        GestureDetector(
+          onTap: () {
+            final updatedTodo = todo.copyWith(isCompleted: !todo.isCompleted);
+            context.read<TodoProvider>().updateTodo(updatedTodo);
+          },
+          child: Container(
+            height: 24,
+            width: 24,
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: accentColor, width: 2),
+            ),
+            child:
+                todo.isCompleted
+                    ? Icon(Icons.check, color: accentColor, size: 16)
+                    : null,
           ),
-          child: Icon(Icons.check, color: accentColor, size: 16),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -406,28 +544,295 @@ class _HomeScreenState extends State<HomeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                todo.title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
+                  decoration:
+                      todo.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                 ),
               ),
               Text(
-                subtitle,
+                todo.description,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
                   ).colorScheme.onSurface.withOpacity(0.6),
+                  decoration:
+                      todo.isCompleted
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                 ),
               ),
+              if (todo.categoryName != 'Default')
+                Text(
+                  todo.categoryName,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
             ],
           ),
         ),
-        IconButton(
-          icon: Icon(Icons.star_border, color: accentColor),
-          onPressed: () {},
+        PopupMenuButton<String>(
+          icon: Icon(Icons.more_vert, color: accentColor),
+          onSelected: (value) {
+            switch (value) {
+              case 'edit':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => AddTodoScreen(
+                          selectedDate: todo.dueDate,
+                          todo: todo,
+                        ),
+                  ),
+                );
+                break;
+              case 'delete':
+                showDialog(
+                  context: context,
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Delete Task'),
+                        content: Text(
+                          'Are you sure you want to delete "${todo.title}"?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<TodoProvider>().deleteTodo(todo.id!);
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.error,
+                            ),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                );
+                break;
+            }
+          },
+          itemBuilder:
+              (context) => [
+                const PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
+                  ),
+                ),
+              ],
         ),
       ],
     );
+  }
+
+  // Show filter dialog
+  void _showFilterDialog(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Filter Tasks'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Priority Filter
+                      const Text(
+                        'Filter by Priority:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          FilterChip(
+                            label: const Text('All'),
+                            selected: _priorityFilter == null,
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _priorityFilter = null;
+                              });
+                            },
+                          ),
+                          FilterChip(
+                            label: const Text('High'),
+                            selected: _priorityFilter == 'High',
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _priorityFilter = selected ? 'High' : null;
+                              });
+                            },
+                          ),
+                          FilterChip(
+                            label: const Text('Medium'),
+                            selected: _priorityFilter == 'Medium',
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _priorityFilter = selected ? 'Medium' : null;
+                              });
+                            },
+                          ),
+                          FilterChip(
+                            label: const Text('Low'),
+                            selected: _priorityFilter == 'Low',
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _priorityFilter = selected ? 'Low' : null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Completion Status Filter
+                      const Text(
+                        'Filter by Status:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          FilterChip(
+                            label: const Text('All'),
+                            selected: _completionFilter == null,
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _completionFilter = null;
+                              });
+                            },
+                          ),
+                          FilterChip(
+                            label: const Text('Completed'),
+                            selected: _completionFilter == true,
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _completionFilter = selected ? true : null;
+                              });
+                            },
+                          ),
+                          FilterChip(
+                            label: const Text('Pending'),
+                            selected: _completionFilter == false,
+                            onSelected: (selected) {
+                              setDialogState(() {
+                                _completionFilter = selected ? false : null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Category Filter
+                      const Text(
+                        'Filter by Category:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Consumer<CategoryProvider>(
+                        builder: (context, categoryProvider, child) {
+                          final categories = categoryProvider.categories;
+
+                          return Wrap(
+                            spacing: 8,
+                            children: [
+                              FilterChip(
+                                label: const Text('All'),
+                                selected: _categoryFilter == null,
+                                onSelected: (selected) {
+                                  setDialogState(() {
+                                    _categoryFilter = null;
+                                    _categoryName = null;
+                                  });
+                                },
+                              ),
+                              ...categories.map((category) {
+                                return FilterChip(
+                                  label: Text(category.name),
+                                  selected: _categoryFilter == category.id,
+                                  onSelected: (selected) {
+                                    setDialogState(() {
+                                      _categoryFilter =
+                                          selected ? category.id : null;
+                                      _categoryName =
+                                          selected ? category.name : null;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _priorityFilter = null;
+                        _completionFilter = null;
+                        _categoryFilter = null;
+                        _categoryName = null;
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Clear Filters'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {});
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Apply'),
+                  ),
+                ],
+              );
+            },
+          ),
+    );
+  }
+
+  bool _hasActiveFilters() {
+    return _priorityFilter != null ||
+        _completionFilter != null ||
+        _categoryFilter != null;
   }
 }

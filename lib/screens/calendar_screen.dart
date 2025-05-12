@@ -402,7 +402,9 @@ class _CalendarScreenState extends State<CalendarScreen>
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  Icons.check_circle_outline,
+                                  todo.isCompleted
+                                      ? Icons.check_circle
+                                      : Icons.check_circle_outline,
                                   color: priorityColor,
                                 ),
                               ),
@@ -411,6 +413,10 @@ class _CalendarScreenState extends State<CalendarScreen>
                                 style: textTheme.titleMedium?.copyWith(
                                   color: colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
+                                  decoration:
+                                      todo.isCompleted
+                                          ? TextDecoration.lineThrough
+                                          : TextDecoration.none,
                                 ),
                               ),
                               subtitle: Column(
@@ -445,12 +451,125 @@ class _CalendarScreenState extends State<CalendarScreen>
                                   ),
                                 ],
                               ),
-                              trailing: IconButton(
+                              trailing: PopupMenuButton<String>(
                                 icon: Icon(
                                   Icons.more_vert,
                                   color: colorScheme.onSurface.withOpacity(0.7),
                                 ),
-                                onPressed: () {},
+                                onSelected: (value) {
+                                  switch (value) {
+                                    case 'edit':
+                                      // Navigate to edit screen
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => AddTodoScreen(
+                                                selectedDate: todo.dueDate,
+                                                todo: todo,
+                                              ),
+                                        ),
+                                      );
+                                      break;
+                                    case 'delete':
+                                      // Show delete confirmation
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (context) => AlertDialog(
+                                              title: const Text('Delete Task'),
+                                              content: Text(
+                                                'Are you sure you want to delete "${todo.title}"?',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed:
+                                                      () => Navigator.pop(
+                                                        context,
+                                                      ),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    context
+                                                        .read<TodoProvider>()
+                                                        .deleteTodo(todo.id!);
+                                                    Navigator.pop(context);
+                                                  },
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            colorScheme.error,
+                                                      ),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                      );
+                                      break;
+                                    case 'complete':
+                                      // Toggle completion status
+                                      final updatedTodo = todo.copyWith(
+                                        isCompleted: !todo.isCompleted,
+                                      );
+                                      context.read<TodoProvider>().updateTodo(
+                                        updatedTodo,
+                                      );
+                                      break;
+                                  }
+                                },
+                                itemBuilder:
+                                    (context) => [
+                                      PopupMenuItem<String>(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.edit,
+                                              color: colorScheme.primary,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text('Edit'),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem<String>(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.delete,
+                                              color: colorScheme.error,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text('Delete'),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem<String>(
+                                        value: 'complete',
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              todo.isCompleted
+                                                  ? Icons.check_box
+                                                  : Icons
+                                                      .check_box_outline_blank,
+                                              color: colorScheme.primary,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              todo.isCompleted
+                                                  ? 'Mark as incomplete'
+                                                  : 'Mark as complete',
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                               ),
                             ),
                           );
