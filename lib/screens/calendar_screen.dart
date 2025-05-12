@@ -13,20 +13,47 @@ class CalendarScreen extends StatefulWidget {
   State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarScreenState extends State<CalendarScreen>
+    with SingleTickerProviderStateMixin {
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    final startOfWeek = _focusedDay.subtract(Duration(days: _focusedDay.weekday % 7));
-    final daysOfWeek = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
+    final startOfWeek = _focusedDay.subtract(
+      Duration(days: _focusedDay.weekday % 7),
+    );
+    final daysOfWeek = List.generate(
+      7,
+      (i) => startOfWeek.add(Duration(days: i)),
+    );
     final todos = context.watch<TodoProvider>().getTodosForDate(_selectedDay);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final pageController = PageController(initialPage: 1000);
-    int currentPage = 1000;
+
     return Scaffold(
       backgroundColor: colorScheme.background,
       appBar: AppBar(
@@ -36,186 +63,402 @@ class _CalendarScreenState extends State<CalendarScreen> {
           icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Calendar', style: textTheme.titleLarge?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Calendar',
+          style: textTheme.titleLarge?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: false,
         actions: [
           IconButton(
             icon: Icon(Icons.calendar_today, color: colorScheme.primary),
+            onPressed: () => _pickMonthYear(context),
+          ),
+          IconButton(
+            icon: Icon(Icons.filter_list, color: colorScheme.primary),
             onPressed: () {},
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              children: [
-                Text(
-                  DateFormat('yyyy').format(_focusedDay),
-                  style: textTheme.bodyMedium?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          children: [
+            // Month Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
                 ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => _pickMonthYear(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          DateFormat('MMMM').format(_focusedDay),
-                          style: textTheme.headlineSmall?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                        Icon(Icons.keyboard_arrow_down, color: colorScheme.primary),
-                      ],
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
-                ),
-                const Spacer(),
-                Text('Calendars', style: textTheme.bodyMedium?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat('yyyy').format(_focusedDay),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onBackground.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => _pickMonthYear(context),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('MMMM').format(_focusedDay),
+                              style: textTheme.headlineSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              color: colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Row(
-              children: List.generate(7, (i) =>
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      weekDays[i],
-                      style: textTheme.bodyMedium?.copyWith(color: colorScheme.onBackground.withOpacity(0.7), fontWeight: FontWeight.w600),
+
+            const SizedBox(height: 16),
+
+            // Week Days Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: Row(
+                children: List.generate(
+                  7,
+                  (i) => Expanded(
+                    child: Center(
+                      child: Text(
+                        weekDays[i],
+                        style: textTheme.bodyMedium?.copyWith(
+                          color:
+                              i == 0 || i == 6
+                                  ? colorScheme.primary
+                                  : colorScheme.onBackground.withOpacity(0.7),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.chevron_left, color: colorScheme.primary, size: 28),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = _focusedDay.subtract(const Duration(days: 7));
-                      _selectedDay = _focusedDay;
-                    });
-                  },
-                ),
-                Expanded(
-                  child: Row(
-                    children: List.generate(7, (i) {
-                      final day = daysOfWeek[i];
-                      final isToday = isSameDay(day, DateTime.now());
-                      final isSelected = isSameDay(day, _selectedDay);
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDay = day;
-                              _focusedDay = day;
-                            });
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              color: isSelected
+
+            const SizedBox(height: 8),
+
+            // Week View
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 12.0),
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: List.generate(7, (i) {
+                  final day = daysOfWeek[i];
+                  final isToday = isSameDay(day, DateTime.now());
+                  final isSelected = isSameDay(day, _selectedDay);
+                  final isWeekend =
+                      day.weekday == DateTime.saturday ||
+                      day.weekday == DateTime.sunday;
+
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedDay = day;
+                          _focusedDay = day;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
                                   ? colorScheme.primary
                                   : isToday
-                                      ? colorScheme.primary.withOpacity(0.15)
-                                      : Colors.transparent,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : isToday
+                                  ? colorScheme.primary.withOpacity(0.15)
+                                  : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow:
+                              isSelected
+                                  ? [
+                                    BoxShadow(
+                                      color: colorScheme.primary.withOpacity(
+                                        0.4,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('E').format(day)[0],
+                              style: textTheme.bodySmall?.copyWith(
+                                color:
+                                    isSelected
+                                        ? colorScheme.onPrimary
+                                        : isWeekend
                                         ? colorScheme.primary
-                                        : Colors.transparent,
-                                width: isSelected || isToday ? 2 : 1,
+                                        : colorScheme.onSurface.withOpacity(
+                                          0.7,
+                                        ),
                               ),
                             ),
-                            width: 44,
-                            height: 44,
-                            child: Center(
-                              child: Text(
-                                '${day.day}',
-                                style: textTheme.bodyLarge?.copyWith(
-                                  color: isSelected
-                                      ? colorScheme.onPrimary
-                                      : isToday
-                                          ? colorScheme.primary
-                                          : colorScheme.onBackground,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
+                            const SizedBox(height: 6),
+                            Text(
+                              '${day.day}',
+                              style: textTheme.bodyLarge?.copyWith(
+                                color:
+                                    isSelected
+                                        ? colorScheme.onPrimary
+                                        : isToday
+                                        ? colorScheme.primary
+                                        : colorScheme.onBackground,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            if (context
+                                .read<TodoProvider>()
+                                .getTodosForDate(day)
+                                .isNotEmpty)
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color:
+                                      isSelected
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Selected Date Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat('EEEE, MMMM d').format(_selectedDay),
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onBackground,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.today, color: colorScheme.primary),
+                    onPressed: () {
+                      setState(() {
+                        _selectedDay = DateTime.now();
+                        _focusedDay = DateTime.now();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Task List
+            Expanded(
+              child:
+                  todos.isEmpty
+                      ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.event_available,
+                                size: 60,
+                                color: colorScheme.primary.withOpacity(0.7),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'No Tasks Today',
+                              style: textTheme.titleLarge?.copyWith(
+                                color: colorScheme.onBackground,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap + to add a new task',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onBackground.withOpacity(
+                                  0.7,
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      );
-                    }),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.chevron_right, color: colorScheme.primary, size: 28),
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = _focusedDay.add(const Duration(days: 7));
-                      _selectedDay = _focusedDay;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            height: 1,
-            color: colorScheme.onBackground.withOpacity(0.08),
-          ),
-          const SizedBox(height: 8),
-          if (todos.isEmpty) ...[
-            const Spacer(),
-            Icon(Icons.hourglass_empty, size: 100, color: colorScheme.primary.withOpacity(0.15)),
-            const SizedBox(height: 24),
-            Text(
-              'No Events Today!',
-              style: textTheme.titleLarge?.copyWith(color: colorScheme.onBackground, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'It looks like a great day to rest,\nrelax, and recharge.',
-              textAlign: TextAlign.center,
-              style: textTheme.bodyMedium?.copyWith(color: colorScheme.onBackground.withOpacity(0.7)),
-            ),
-            const Spacer(),
-          ] else ...[
-            Expanded(
-              child: ListView.builder(
-                itemCount: todos.length,
-                itemBuilder: (context, index) {
-                  final todo = todos[index];
-                  return Card(
-                    color: colorScheme.surface,
-                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    child: ListTile(
-                      title: Text(todo.title, style: textTheme.bodyLarge?.copyWith(color: colorScheme.primary, fontWeight: FontWeight.bold)),
-                      subtitle: Text(todo.description, style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withOpacity(0.7))),
-                    ),
-                  );
-                },
-              ),
+                      )
+                      : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: todos.length,
+                        itemBuilder: (context, index) {
+                          final todo = todos[index];
+                          Color priorityColor;
+
+                          switch (todo.priority) {
+                            case 'Low':
+                              priorityColor = Colors.green;
+                              break;
+                            case 'High':
+                              priorityColor = Colors.red;
+                              break;
+                            default:
+                              priorityColor = Colors.orange;
+                          }
+
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: priorityColor.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: priorityColor.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: priorityColor.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.check_circle_outline,
+                                  color: priorityColor,
+                                ),
+                              ),
+                              title: Text(
+                                todo.title,
+                                style: textTheme.titleMedium?.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    todo.description,
+                                    style: textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurface.withOpacity(
+                                        0.7,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.flag,
+                                        size: 14,
+                                        color: priorityColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        todo.priority,
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: priorityColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(
+                                  Icons.more_vert,
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                                onPressed: () {},
+                              ),
+                            ),
+                          );
+                        },
+                      ),
             ),
           ],
-        ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -242,9 +485,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       lastDate: DateTime(now.year + 10),
       initialEntryMode: DatePickerEntryMode.calendarOnly,
       helpText: 'Select Month and Year',
-      fieldLabelText: 'Month/Year',
-      fieldHintText: 'Month/Year',
-      selectableDayPredicate: (date) => date.day == 1,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -253,4 +503,4 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
     }
   }
-} 
+}

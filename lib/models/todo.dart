@@ -4,6 +4,7 @@ class Todo {
   final String description;
   final DateTime dueDate;
   bool isCompleted;
+  final String priority;
 
   Todo({
     this.id,
@@ -11,6 +12,7 @@ class Todo {
     required this.description,
     required this.dueDate,
     this.isCompleted = false,
+    this.priority = 'Medium',
   });
 
   Map<String, dynamic> toMap() {
@@ -20,6 +22,7 @@ class Todo {
       'description': description,
       'dueDate': dueDate.toIso8601String(),
       'isCompleted': isCompleted ? 1 : 0,
+      'priority': priority,
     };
   }
 
@@ -30,6 +33,7 @@ class Todo {
       description: map['description'],
       dueDate: DateTime.parse(map['dueDate']),
       isCompleted: map['isCompleted'] == 1,
+      priority: map['priority'] ?? 'Medium',
     );
   }
-} 
+}
