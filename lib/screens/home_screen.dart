@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/user_provider.dart';
 import '../models/todo.dart';
 import 'add_todo_screen.dart';
 import 'calendar_screen.dart';
 import 'categories_screen.dart';
 import 'reminders_screen.dart';
+import 'profile_screen.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -81,25 +84,64 @@ class _HomeScreenState extends State<HomeScreen>
                               fontSize: 16,
                             ),
                           ),
-                          Text(
-                            'User',
-                            style: textTheme.headlineMedium?.copyWith(
-                              color: colorScheme.onBackground,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Consumer<UserProvider>(
+                            builder: (context, userProvider, child) {
+                              return Text(
+                                userProvider.name,
+                                style: textTheme.headlineMedium?.copyWith(
+                                  color: colorScheme.onBackground,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          onPressed: () {},
-                          icon: Icon(Icons.person, color: colorScheme.primary),
-                          iconSize: 28,
-                        ),
+                      Consumer<UserProvider>(
+                        builder: (context, userProvider, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child:
+                                userProvider.profileImagePath.isNotEmpty
+                                    ? GestureDetector(
+                                      onTap:
+                                          () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) =>
+                                                      const ProfileScreen(),
+                                            ),
+                                          ),
+                                      child: CircleAvatar(
+                                        radius: 24,
+                                        backgroundImage: FileImage(
+                                          File(userProvider.profileImagePath),
+                                        ),
+                                        backgroundColor: Colors.transparent,
+                                      ),
+                                    )
+                                    : IconButton(
+                                      onPressed:
+                                          () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) =>
+                                                      const ProfileScreen(),
+                                            ),
+                                          ),
+                                      icon: Icon(
+                                        Icons.person,
+                                        color: colorScheme.primary,
+                                      ),
+                                      iconSize: 28,
+                                    ),
+                          );
+                        },
                       ),
                     ],
                   ),
