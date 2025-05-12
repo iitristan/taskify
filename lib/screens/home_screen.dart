@@ -42,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen>
   String? _priorityFilter;
   bool? _completionFilter;
   int? _categoryFilter;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -69,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _searchController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -206,6 +209,12 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
       child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value.toLowerCase();
+          });
+        },
         decoration: InputDecoration(
           hintText: 'Search tasks...',
           hintStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.5)),
@@ -213,6 +222,21 @@ class _HomeScreenState extends State<HomeScreen>
             Icons.search,
             color: colorScheme.onSurface.withOpacity(0.5),
           ),
+          suffixIcon:
+              _searchQuery.isNotEmpty
+                  ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      color: colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _searchController.clear();
+                        _searchQuery = '';
+                      });
+                    },
+                  )
+                  : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
@@ -333,32 +357,36 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildTasksList(ColorScheme colorScheme, TextTheme textTheme) {
     return Consumer<TodoProvider>(
       builder: (context, todoProvider, child) {
-        var todayTasks = _getFilteredTasks(todoProvider);
+        var filteredTasks = _getFilteredTasks(todoProvider);
 
-        if (todayTasks.isEmpty) {
-          return _buildEmptyTasksCard(colorScheme, textTheme);
+        if (filteredTasks.isEmpty) {
+          return _buildEmptyStateCard(colorScheme, textTheme);
         }
 
         return Card(
           color: colorScheme.surface,
-          elevation: 8,
-          shadowColor: Colors.black.withOpacity(0.2),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: colorScheme.onSurface.withOpacity(0.05),
+              width: 1,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children:
-                  todayTasks.map((todo) {
-                    Color priorityColor = _getPriorityColor(todo.priority);
-                    return Column(
-                      children: [
-                        _buildTaskTile(todo, priorityColor),
-                        if (todayTasks.last != todo) const Divider(height: 24),
-                      ],
-                    );
-                  }).toList(),
+                  _searchQuery.isNotEmpty
+                      ? _buildGroupedTasksList(
+                        filteredTasks,
+                        colorScheme,
+                        textTheme,
+                      )
+                      : filteredTasks.map((todo) {
+                        Color priorityColor = _getPriorityColor(todo.priority);
+                        return _buildTaskTile(todo, priorityColor);
+                      }).toList(),
             ),
           ),
         );
@@ -367,23 +395,117 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<Todo> _getFilteredTasks(TodoProvider todoProvider) {
-    var tasks = todoProvider.getTodosForDate(DateTime.now());
+    // Get all tasks if searching, otherwise just today's tasks
+    var tasks =
+        _searchQuery.isNotEmpty
+            ? todoProvider.todos
+            : todoProvider.getTodosForDate(DateTime.now());
 
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      tasks =
+          tasks.where((todo) {
+            final titleMatch = todo.title.toLowerCase().contains(_searchQuery);
+            final descriptionMatch = todo.description.toLowerCase().contains(
+              _searchQuery,
+            );
+            final categoryMatch = todo.categoryName.toLowerCase().contains(
+              _searchQuery,
+            );
+            final dateMatch = DateFormat(
+              'MMMM d, y',
+            ).format(todo.dueDate).toLowerCase().contains(_searchQuery);
+            return titleMatch || descriptionMatch || categoryMatch || dateMatch;
+          }).toList();
+
+      // Sort by due date
+      tasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    }
+
+    // Apply priority filter
     if (_priorityFilter != null) {
       tasks = tasks.where((todo) => todo.priority == _priorityFilter).toList();
     }
 
+    // Apply completion filter
     if (_completionFilter != null) {
       tasks =
           tasks.where((todo) => todo.isCompleted == _completionFilter).toList();
     }
 
+    // Apply category filter
     if (_categoryFilter != null) {
       tasks =
           tasks.where((todo) => todo.categoryId == _categoryFilter).toList();
     }
 
     return tasks;
+  }
+
+  List<Widget> _buildGroupedTasksList(
+    List<Todo> tasks,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    Map<String, List<Todo>> groupedTasks = {};
+    for (var task in tasks) {
+      final dateKey = DateFormat('MMMM d, y').format(task.dueDate);
+      if (!groupedTasks.containsKey(dateKey)) {
+        groupedTasks[dateKey] = [];
+      }
+      groupedTasks[dateKey]!.add(task);
+    }
+
+    List<Widget> widgets = [];
+    groupedTasks.forEach((date, dateTasks) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16, bottom: 12),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: 13,
+                color: colorScheme.primary.withOpacity(0.8),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                date,
+                style: textTheme.bodySmall?.copyWith(
+                  fontSize: 12,
+                  color: colorScheme.primary.withOpacity(0.8),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      widgets.addAll(
+        dateTasks.map((todo) {
+          Color priorityColor = _getPriorityColor(todo.priority);
+          return _buildTaskTile(todo, priorityColor);
+        }),
+      );
+
+      if (date != groupedTasks.keys.last) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: colorScheme.onSurface.withOpacity(0.05),
+            ),
+          ),
+        );
+      }
+    });
+
+    return widgets;
   }
 
   Color _getPriorityColor(String priority) {
@@ -397,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Widget _buildEmptyTasksCard(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildEmptyStateCard(ColorScheme colorScheme, TextTheme textTheme) {
     return Card(
       color: colorScheme.surface,
       elevation: 8,
@@ -408,13 +530,17 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           children: [
             Icon(
-              Icons.check_circle_outline,
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off
+                  : Icons.check_circle_outline,
               size: 48,
               color: colorScheme.primary.withOpacity(0.5),
             ),
             const SizedBox(height: 16),
             Text(
-              'No Tasks Today',
+              _searchQuery.isNotEmpty
+                  ? 'No matching tasks found'
+                  : 'No Tasks Today',
               style: textTheme.titleMedium?.copyWith(
                 color: colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
@@ -422,7 +548,9 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Enjoy your day off!',
+              _searchQuery.isNotEmpty
+                  ? 'Try adjusting your search or filters'
+                  : 'Enjoy your day off!',
               style: textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -548,134 +676,201 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildTaskTile(Todo todo, Color accentColor) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            final updatedTodo = todo.copyWith(isCompleted: !todo.isCompleted);
-            context.read<TodoProvider>().updateTodo(updatedTodo);
-          },
-          child: Container(
-            height: 24,
-            width: 24,
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: accentColor, width: 2),
-            ),
-            child:
-                todo.isCompleted
-                    ? Icon(Icons.check, color: accentColor, size: 16)
-                    : null,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                todo.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
-                  decoration:
-                      todo.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                todo.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.6),
-                  decoration:
-                      todo.isCompleted
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none,
-                ),
-              ),
-              if (todo.categoryName != 'Default')
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
+  Widget _buildTaskTile(Todo todo, Color priorityColor) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Checkbox
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: Transform.scale(
+                  scale: 0.9,
+                  child: Checkbox(
+                    value: todo.isCompleted,
+                    onChanged: (bool? value) {
+                      final updatedTodo = todo.copyWith(
+                        isCompleted: value ?? false,
+                      );
+                      context.read<TodoProvider>().updateTodo(updatedTodo);
+                    },
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(
-                      todo.categoryName,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: accentColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    side: BorderSide(color: priorityColor, width: 1.5),
+                    activeColor: priorityColor,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
-            ],
-          ),
-        ),
-        _buildTaskMenu(todo, accentColor),
-      ],
-    );
-  }
-
-  Widget _buildTaskMenu(Todo todo, Color accentColor) {
-    return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, color: accentColor),
-      onSelected: (value) => _handleTaskMenuAction(value, todo),
-      itemBuilder:
-          (context) => [
-            const PopupMenuItem<String>(
-              value: 'edit',
-              child: Row(
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Task Content
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit'),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          todo.title,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontSize: 15,
+                            height: 1.3,
+                            color:
+                                todo.isCompleted
+                                    ? colorScheme.onSurface.withOpacity(0.5)
+                                    : colorScheme.onSurface,
+                            decoration:
+                                todo.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                          ),
+                        ),
+                      ),
+                      if (_searchQuery.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMM d').format(todo.dueDate),
+                          style: textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
+                            color: colorScheme.primary.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (todo.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      todo.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 13,
+                        height: 1.3,
+                        color:
+                            todo.isCompleted
+                                ? colorScheme.onSurface.withOpacity(0.3)
+                                : colorScheme.onSurface.withOpacity(0.6),
+                        decoration:
+                            todo.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                      ),
+                    ),
+                  ],
+                  if (todo.categoryName != 'Default') ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      todo.categoryName,
+                      style: textTheme.bodySmall?.copyWith(
+                        fontSize: 12,
+                        height: 1.2,
+                        color: priorityColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            const PopupMenuItem<String>(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, color: Colors.red, size: 20),
-                  SizedBox(width: 8),
-                  Text('Delete'),
-                ],
+            // Menu
+            SizedBox(
+              width: 32,
+              height: double.infinity,
+              child: IconButton(
+                icon: Icon(
+                  Icons.more_vert,
+                  color: colorScheme.onSurface.withOpacity(0.3),
+                  size: 18,
+                ),
+                onPressed: () => _showTaskMenu(todo, priorityColor),
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
+                alignment: Alignment.centerRight,
               ),
             ),
           ],
+        ),
+      ),
     );
   }
 
-  void _handleTaskMenuAction(String action, Todo todo) {
-    switch (action) {
-      case 'edit':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    AddTodoScreen(selectedDate: todo.dueDate, todo: todo),
+  void _showTaskMenu(Todo todo, Color priorityColor) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.edit, color: colorScheme.primary),
+                    title: Text(
+                      'Edit Task',
+                      style: TextStyle(color: colorScheme.onSurface),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => AddTodoScreen(
+                                selectedDate: todo.dueDate,
+                                todo: todo,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.delete, color: colorScheme.error),
+                    title: Text(
+                      'Delete Task',
+                      style: TextStyle(color: colorScheme.error),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showDeleteConfirmation(todo);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
           ),
-        );
-        break;
-      case 'delete':
-        _showDeleteConfirmation(todo);
-        break;
-    }
+    );
   }
 
   void _showDeleteConfirmation(Todo todo) {
