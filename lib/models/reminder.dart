@@ -32,4 +32,20 @@ class Reminder {
       repeatType: map['repeatType'],
     );
   }
+
+  Reminder copyWith({
+    int? id,
+    int? todoId,
+    DateTime? reminderTime,
+    bool? isRepeating,
+    String? repeatType,
+  }) {
+    return Reminder(
+      id: id ?? this.id,
+      todoId: todoId ?? this.todoId,
+      reminderTime: reminderTime ?? this.reminderTime,
+      isRepeating: isRepeating ?? this.isRepeating,
+      repeatType: repeatType ?? this.repeatType,
+    );
+  }
 }

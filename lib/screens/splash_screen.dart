@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/todo_provider.dart';
+import '../providers/category_provider.dart';
+import '../providers/reminder_provider.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -38,7 +42,21 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Initialize all providers
+    await Future.wait([
+      context.read<TodoProvider>().initDatabase(),
+      context.read<CategoryProvider>().initDatabase(),
+      context.read<ReminderProvider>().initDatabase(),
+    ]);
+
+    // Add a minimum delay to show the splash screen
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, animation, secondaryAnimation) => const HomeScreen(),
@@ -48,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen>
           transitionDuration: const Duration(milliseconds: 800),
         ),
       );
-    });
+    }
   }
 
   @override

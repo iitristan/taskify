@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
+import '../screens/notification_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -244,7 +245,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: 'Manage notification settings',
                   colorScheme: colorScheme,
                   onTap: () {
-                    // Navigate to notifications settings
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => const NotificationSettingsScreen(),
+                      ),
+                    );
                   },
                 ),
                 const Divider(),

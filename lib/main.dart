@@ -9,6 +9,8 @@ import 'providers/todo_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const MyApp());
 }
@@ -29,6 +31,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'Taskify',
             debugShowCheckedModeBanner: false,
             theme: themeProvider.getTheme().copyWith(
