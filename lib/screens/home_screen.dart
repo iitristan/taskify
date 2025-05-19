@@ -484,6 +484,9 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       );
 
+      // Sort tasks by time
+      dateTasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
       widgets.addAll(
         dateTasks.map((todo) {
           Color priorityColor = _getPriorityColor(todo.priority);
@@ -716,11 +719,9 @@ class _HomeScreenState extends State<HomeScreen>
             // Task Content
             Expanded(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -728,27 +729,23 @@ class _HomeScreenState extends State<HomeScreen>
                           style: textTheme.titleMedium?.copyWith(
                             fontSize: 15,
                             height: 1.3,
-                            color:
-                                todo.isCompleted
-                                    ? colorScheme.onSurface.withOpacity(0.5)
-                                    : colorScheme.onSurface,
-                            decoration:
-                                todo.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null,
+                            color: todo.isCompleted
+                                ? colorScheme.onSurface.withOpacity(0.3)
+                                : colorScheme.onSurface,
+                            decoration: todo.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
                           ),
                         ),
                       ),
-                      if (_searchQuery.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat('MMM d').format(todo.dueDate),
-                          style: textTheme.bodySmall?.copyWith(
-                            fontSize: 12,
-                            color: colorScheme.primary.withOpacity(0.8),
-                          ),
+                      const SizedBox(width: 8),
+                      Text(
+                        DateFormat('h:mm a').format(todo.dueDate),
+                        style: textTheme.bodySmall?.copyWith(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withOpacity(0.6),
                         ),
-                      ],
+                      ),
                     ],
                   ),
                   if (todo.description.isNotEmpty) ...[
@@ -760,14 +757,12 @@ class _HomeScreenState extends State<HomeScreen>
                       style: textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
                         height: 1.3,
-                        color:
-                            todo.isCompleted
-                                ? colorScheme.onSurface.withOpacity(0.3)
-                                : colorScheme.onSurface.withOpacity(0.6),
-                        decoration:
-                            todo.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
+                        color: todo.isCompleted
+                            ? colorScheme.onSurface.withOpacity(0.3)
+                            : colorScheme.onSurface.withOpacity(0.6),
+                        decoration: todo.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
                       ),
                     ),
                   ],

@@ -85,19 +85,30 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
         builder: (context, child) {
           return Theme(
-            data: Theme.of(
-              context,
-            ).copyWith(colorScheme: Theme.of(context).colorScheme),
+            data: Theme.of(context).copyWith(colorScheme: Theme.of(context).colorScheme),
             child: child!,
           );
         },
       );
 
       if (picked != null) {
-        setState(() {
-          _selectedDate = picked;
-          debugPrint('Date selected: ${_selectedDate.toString()}');
-        });
+        final TimeOfDay? pickedTime = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.fromDateTime(_selectedDate),
+        );
+
+        if (pickedTime != null) {
+          setState(() {
+            _selectedDate = DateTime(
+              picked.year,
+              picked.month,
+              picked.day,
+              pickedTime.hour,
+              pickedTime.minute,
+            );
+            debugPrint('Date and time selected: ${_selectedDate.toString()}');
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error selecting date: $e');
@@ -372,31 +383,32 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   }
 
   Widget _buildDateSelector(TextTheme textTheme, ColorScheme colorScheme) {
-    return InkWell(
-      onTap: () => _selectDate(context),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: colorScheme.primary.withOpacity(0.3),
-            width: 1,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.primary.withOpacity(0.3),
+          width: 1,
         ),
+      ),
+      child: InkWell(
+        onTap: () => _selectDate(context),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.calendar_today, color: colorScheme.primary),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                DateFormat('EEEE, MMMM d, y').format(_selectedDate),
-                style: textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurface,
+            Row(
+              children: [
+                Icon(Icons.calendar_today, color: colorScheme.primary, size: 20),
+                const SizedBox(width: 16),
+                Text(
+                  '${DateFormat('MMM d, y').format(_selectedDate)} at ${DateFormat('h:mm a').format(_selectedDate)}',
+                  style: textTheme.bodyLarge?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
             ),
             Icon(Icons.arrow_drop_down, color: colorScheme.primary),
           ],
