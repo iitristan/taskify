@@ -12,67 +12,202 @@ class RemindersScreen extends StatefulWidget {
   State<RemindersScreen> createState() => _RemindersScreenState();
 }
 
-class _RemindersScreenState extends State<RemindersScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+class _RemindersScreenState extends State<RemindersScreen> {
   final _formKey = GlobalKey<FormState>();
   DateTime _selectedDateTime = DateTime.now().add(const Duration(hours: 1));
   bool _isRepeating = false;
   String _repeatType = 'none';
-  int? _selectedTodoId;
+  String? _selectedTodoId;
 
   final List<String> _repeatOptions = ['none', 'daily', 'weekly', 'monthly'];
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeIn,
-    );
-    _animationController.forward();
-
+    debugPrint('Initializing RemindersScreen...');
     // Initialize the database
-    Future.microtask(() => context.read<ReminderProvider>().initDatabase());
+    Future.microtask(() {
+      debugPrint('Initializing reminder database from screen...');
+      context.read<ReminderProvider>().initDatabase();
+    });
   }
 
   @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-  Future<void> _selectDateTime(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateTime,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reminders'),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _showAddReminderDialog,
+          ),
+        ],
+      ),
+      body: Consumer<ReminderProvider>(
+        builder: (context, reminderProvider, child) {
+          debugPrint('Building RemindersScreen with ${reminderProvider.reminders.length} reminders');
+          final reminders = reminderProvider.reminders;
 
-    if (pickedDate != null) {
-      final TimeOfDay? pickedTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
-      );
+          if (!reminderProvider.isInitialized) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-      if (pickedTime != null) {
-        setState(() {
-          _selectedDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
+          if (reminders.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.notifications,
+                      size: 60,
+                      color: colorScheme.primary.withOpacity(0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'No Reminders Set',
+                    style: textTheme.titleLarge?.copyWith(
+                      color: colorScheme.onBackground,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap + to add a new reminder',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onBackground.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Consumer<TodoProvider>(
+            builder: (context, todoProvider, child) {
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: reminders.length,
+                itemBuilder: (context, index) {
+                  final reminder = reminders[index];
+                  final todo = todoProvider.todos.firstWhere(
+                    (todo) => todo.id == reminder.todoId,
+                    orElse: () => todoProvider.todos.first,
+                  );
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: colorScheme.primary.withOpacity(0.2),
+                        child: Icon(
+                          reminder.isRepeating
+                              ? Icons.repeat
+                              : Icons.notifications_active,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(
+                        todo.title,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat(
+                              'EEE, MMM d, yyyy - h:mm a',
+                            ).format(reminder.reminderTime),
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                          if (reminder.isRepeating)
+                            Text(
+                              'Repeats ${reminder.repeatType.capitalize()}',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: colorScheme.error),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder:
+                                (context) => AlertDialog(
+                                  title: const Text('Delete Reminder'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this reminder?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        reminderProvider.deleteReminder(
+                                          reminder.id!,
+                                        );
+                                        Navigator.pop(context);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: colorScheme.error,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           );
-        });
-      }
-    }
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddReminderDialog,
+        backgroundColor: colorScheme.primary,
+        child: const Icon(Icons.add, size: 28),
+      ),
+    );
   }
 
   void _showAddReminderDialog() {
@@ -110,7 +245,7 @@ class _RemindersScreenState extends State<RemindersScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Task dropdown
-                        DropdownButtonFormField<int>(
+                        DropdownButtonFormField<String>(
                           decoration: const InputDecoration(
                             labelText: 'Select Task',
                             hintText: 'Choose a task',
@@ -118,7 +253,7 @@ class _RemindersScreenState extends State<RemindersScreen>
                           value: _selectedTodoId,
                           items:
                               todos.map((todo) {
-                                return DropdownMenuItem<int>(
+                                return DropdownMenuItem<String>(
                                   value: todo.id,
                                   child: Text(
                                     todo.title,
@@ -229,178 +364,32 @@ class _RemindersScreenState extends State<RemindersScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reminders'),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showAddReminderDialog,
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Consumer<ReminderProvider>(
-          builder: (context, reminderProvider, child) {
-            final reminders = reminderProvider.reminders;
-
-            if (reminders.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.notifications,
-                        size: 60,
-                        color: colorScheme.primary.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'No Reminders Set',
-                      style: textTheme.titleLarge?.copyWith(
-                        color: colorScheme.onBackground,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tap + to add a new reminder',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onBackground.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Consumer<TodoProvider>(
-              builder: (context, todoProvider, child) {
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: reminders.length,
-                  itemBuilder: (context, index) {
-                    final reminder = reminders[index];
-                    final todo = todoProvider.todos.firstWhere(
-                      (todo) => todo.id == reminder.todoId,
-                      orElse: () => todoProvider.todos.first,
-                    );
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: colorScheme.primary.withOpacity(0.2),
-                          child: Icon(
-                            reminder.isRepeating
-                                ? Icons.repeat
-                                : Icons.notifications_active,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                        title: Text(
-                          todo.title,
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              DateFormat(
-                                'EEE, MMM d, yyyy - h:mm a',
-                              ).format(reminder.reminderTime),
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.7),
-                              ),
-                            ),
-                            if (reminder.isRepeating)
-                              Text(
-                                'Repeats ${reminder.repeatType.capitalize()}',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                          ],
-                        ),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: colorScheme.error),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder:
-                                  (context) => AlertDialog(
-                                    title: const Text('Delete Reminder'),
-                                    content: const Text(
-                                      'Are you sure you want to delete this reminder?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          reminderProvider.deleteReminder(
-                                            reminder.id!,
-                                          );
-                                          Navigator.pop(context);
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: colorScheme.error,
-                                        ),
-                                        child: const Text('Delete'),
-                                      ),
-                                    ],
-                                  ),
-                            );
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddReminderDialog,
-        backgroundColor: colorScheme.primary,
-        child: const Icon(Icons.add, size: 28),
-      ),
+  Future<void> _selectDateTime(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDateTime,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
     );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          _selectedDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
+      }
+    }
   }
 }
 

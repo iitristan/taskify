@@ -496,7 +496,7 @@ class _CategoriesScreenState extends State<CategoriesScreen>
                   itemBuilder: (context, index) {
                     final category = categories[index];
                     final todoCount =
-                        todoProvider.getTodosByCategory(category.id!).length;
+                        todoProvider.getTodosByCategory(category.id.toString()).length;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),

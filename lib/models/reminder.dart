@@ -1,6 +1,6 @@
 class Reminder {
-  final int? id;
-  final int todoId;
+  final String? id;
+  final String todoId;
   final DateTime reminderTime;
   final bool isRepeating;
   final String repeatType; // daily, weekly, monthly
@@ -34,8 +34,8 @@ class Reminder {
   }
 
   Reminder copyWith({
-    int? id,
-    int? todoId,
+    String? id,
+    String? todoId,
     DateTime? reminderTime,
     bool? isRepeating,
     String? repeatType,

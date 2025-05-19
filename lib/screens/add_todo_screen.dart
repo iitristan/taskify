@@ -25,7 +25,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   late AnimationController _animationController;
   late Animation<double> _animation;
 
-  int? _selectedCategoryId;
+  String? _selectedCategoryId;
   String _selectedCategoryName = 'Default';
   bool _isEditing = false;
 
@@ -437,7 +437,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
             ),
           ),
           child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
+            child: DropdownButton<String>(
               value: _selectedCategoryId,
               hint: Text(
                 'Select Category',
@@ -453,8 +453,8 @@ class _AddTodoScreenState extends State<AddTodoScreen>
               ),
               items:
                   categories.map((category) {
-                    return DropdownMenuItem<int>(
-                      value: category.id,
+                    return DropdownMenuItem<String>(
+                      value: category.id.toString(),
                       child: Row(
                         children: [
                           Icon(category.icon, color: category.color, size: 20),
@@ -464,12 +464,12 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                       ),
                     );
                   }).toList(),
-              onChanged: (int? value) {
+              onChanged: (String? value) {
                 setState(() {
                   _selectedCategoryId = value;
                   if (value != null) {
                     final category = categories.firstWhere(
-                      (cat) => cat.id == value,
+                      (cat) => cat.id.toString() == value,
                     );
                     _selectedCategoryName = category.name;
                   }

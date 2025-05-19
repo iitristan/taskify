@@ -29,6 +29,7 @@ class ReminderProvider with ChangeNotifier {
   int _reminderLeadTime = 15;
 
   List<Reminder> get reminders => _reminders;
+  bool get isInitialized => _isInitialized;
 
   Future<void> initPlugin() async {
     // Initialize timezone
@@ -91,8 +92,8 @@ class ReminderProvider with ChangeNotifier {
     if (payload == null) return;
 
     final Map<String, dynamic> data = json.decode(payload);
-    final int reminderId = data['reminderId'];
-    final int todoId = data['todoId'];
+    final String reminderId = data['reminderId'];
+    final String todoId = data['todoId'];
 
     switch (response.actionId) {
       case 'MARK_AS_DONE':
@@ -103,8 +104,7 @@ class ReminderProvider with ChangeNotifier {
         );
         final todo = todoProvider.todos.firstWhere(
           (todo) => todo.id == todoId,
-          orElse:
-              () => Todo(title: '', description: '', dueDate: DateTime.now()),
+          orElse: () => Todo(title: '', description: '', dueDate: DateTime.now()),
         );
         if (todo.id != null) {
           await todoProvider.updateTodo(todo.copyWith(isCompleted: true));
@@ -177,32 +177,39 @@ class ReminderProvider with ChangeNotifier {
     if (_isInitialized) return;
 
     try {
+      debugPrint('Initializing reminder database...');
       await initPlugin();
       _database = await openDatabase(
         join(await getDatabasesPath(), 'reminder_database.db'),
         onCreate: (db, version) {
+          debugPrint('Creating reminder database tables...');
           return db.execute(
-            'CREATE TABLE reminders(id INTEGER PRIMARY KEY AUTOINCREMENT, todoId INTEGER, reminderTime TEXT, isRepeating INTEGER, repeatType TEXT)',
+            'CREATE TABLE reminders(id TEXT PRIMARY KEY, todoId TEXT, reminderTime TEXT, isRepeating INTEGER, repeatType TEXT)',
           );
         },
         version: 1,
       );
+      debugPrint('Loading reminders...');
       await loadReminders();
       _isInitialized = true;
+      debugPrint('Reminder database initialized successfully');
     } catch (e) {
-      print('Reminder database initialization error: $e');
+      debugPrint('Reminder database initialization error: $e');
       _isInitialized = true;
       notifyListeners();
     }
   }
 
   Future<void> loadReminders() async {
-    if (_database == null) return;
+    if (_database == null) {
+      debugPrint('Database is null, skipping loadReminders');
+      return;
+    }
 
     try {
-      final List<Map<String, dynamic>> maps = await _database!.query(
-        'reminders',
-      );
+      debugPrint('Querying reminders from database...');
+      final List<Map<String, dynamic>> maps = await _database!.query('reminders');
+      debugPrint('Found ${maps.length} reminders');
       _reminders = List.generate(maps.length, (i) => Reminder.fromMap(maps[i]));
 
       // Schedule all reminders
@@ -214,7 +221,7 @@ class ReminderProvider with ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('Error loading reminders: $e');
+      debugPrint('Error loading reminders: $e');
     }
   }
 
@@ -228,7 +235,7 @@ class ReminderProvider with ChangeNotifier {
         );
 
         final newReminder = Reminder(
-          id: id,
+          id: id.toString(),
           todoId: reminder.todoId,
           reminderTime: reminder.reminderTime,
           isRepeating: reminder.isRepeating,
@@ -241,7 +248,7 @@ class ReminderProvider with ChangeNotifier {
         await scheduleNotification(newReminder);
       } else {
         // For web platform, use in-memory data
-        final id = _reminders.isEmpty ? 1 : _reminders.last.id! + 1;
+        final id = _reminders.isEmpty ? '1' : _reminders.last.id!;
         final newReminder = Reminder(
           id: id,
           todoId: reminder.todoId,
@@ -286,7 +293,7 @@ class ReminderProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteReminder(int id) async {
+  Future<void> deleteReminder(String id) async {
     try {
       if (_database != null) {
         await _database!.delete('reminders', where: 'id = ?', whereArgs: [id]);
@@ -369,7 +376,7 @@ class ReminderProvider with ChangeNotifier {
         }
 
         await flutterLocalNotificationsPlugin.periodicallyShow(
-          reminder.id!,
+          int.parse(reminder.id!),
           'Task Reminder',
           'You have a task to complete',
           interval,
@@ -378,7 +385,7 @@ class ReminderProvider with ChangeNotifier {
         );
       } else {
         await flutterLocalNotificationsPlugin.zonedSchedule(
-          reminder.id!,
+          int.parse(reminder.id!),
           'Task Reminder',
           'You have a task to complete',
           scheduledDate,
@@ -394,11 +401,11 @@ class ReminderProvider with ChangeNotifier {
     }
   }
 
-  Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
+  Future<void> cancelNotification(String id) async {
+    await flutterLocalNotificationsPlugin.cancel(int.parse(id));
   }
 
-  List<Reminder> getRemindersForTodo(int todoId) {
+  List<Reminder> getRemindersForTodo(String todoId) {
     return _reminders.where((reminder) => reminder.todoId == todoId).toList();
   }
 }

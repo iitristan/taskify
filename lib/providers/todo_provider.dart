@@ -1,13 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/todo.dart';
 import 'dart:async';
 
 class TodoProvider with ChangeNotifier {
   List<Todo> _todos = [];
-  Database? _database;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isInitialized = false;
 
   List<Todo> get todos => _todos;
@@ -16,77 +15,19 @@ class TodoProvider with ChangeNotifier {
     if (_isInitialized) return;
 
     try {
-      _database = await openDatabase(
-        join(await getDatabasesPath(), 'todo_database.db'),
-        onCreate: (db, version) {
-          return db.execute(
-            'CREATE TABLE todos(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, dueDate TEXT, isCompleted INTEGER, priority TEXT, categoryId INTEGER, categoryName TEXT)',
-          );
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 2) {
-            await db.execute(
-              'ALTER TABLE todos ADD COLUMN priority TEXT DEFAULT "Medium"',
-            );
-          }
-          if (oldVersion < 3) {
-            await db.execute('ALTER TABLE todos ADD COLUMN categoryId INTEGER');
-            await db.execute(
-              'ALTER TABLE todos ADD COLUMN categoryName TEXT DEFAULT "Default"',
-            );
-          }
-        },
-        version: 3,
-      );
       await loadTodos();
       _isInitialized = true;
     } catch (e) {
       debugPrint('Database initialization error: $e');
-      // For web platform or when database fails, use in-memory data
-      _todos = [
-        Todo(
-          id: 1,
-          title: 'Complete app redesign',
-          description: 'Finish the UI improvements for the Taskify app',
-          dueDate: DateTime.now().add(const Duration(days: 2)),
-          priority: 'High',
-        ),
-        Todo(
-          id: 2,
-          title: 'Buy groceries',
-          description: 'Get milk, eggs, and bread',
-          dueDate: DateTime.now(),
-          priority: 'Medium',
-        ),
-        Todo(
-          id: 3,
-          title: 'Call mom',
-          description: 'Weekly check-in call',
-          dueDate: DateTime.now().add(const Duration(days: 1)),
-          priority: 'Low',
-        ),
-      ];
       _isInitialized = true;
       notifyListeners();
     }
   }
 
   Future<void> loadTodos() async {
-    if (_database == null) return;
-
     try {
-      final List<Map<String, dynamic>> maps = await _database!.query('todos');
-      _todos = [];
-
-      for (var map in maps) {
-        try {
-          final todo = Todo.fromMap(map);
-          _todos.add(todo);
-        } catch (e) {
-          debugPrint('Error parsing todo: $e');
-        }
-      }
-
+      final QuerySnapshot snapshot = await _firestore.collection('todos').get();
+      _todos = snapshot.docs.map((doc) => Todo.fromFirestore(doc)).toList();
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading todos: $e');
@@ -96,40 +37,9 @@ class TodoProvider with ChangeNotifier {
   Future<void> addTodo(Todo todo) async {
     try {
       debugPrint('Adding todo with date: ${todo.dueDate}');
-      if (_database != null) {
-        final id = await _database!.insert(
-          'todos',
-          todo.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        _todos.add(
-          Todo(
-            id: id,
-            title: todo.title,
-            description: todo.description,
-            dueDate: todo.dueDate,
-            isCompleted: todo.isCompleted,
-            priority: todo.priority,
-            categoryId: todo.categoryId,
-            categoryName: todo.categoryName,
-          ),
-        );
-      } else {
-        // For web platform, use in-memory data
-        final id = _todos.isEmpty ? 1 : _todos.last.id! + 1;
-        _todos.add(
-          Todo(
-            id: id,
-            title: todo.title,
-            description: todo.description,
-            dueDate: todo.dueDate,
-            isCompleted: todo.isCompleted,
-            priority: todo.priority,
-            categoryId: todo.categoryId,
-            categoryName: todo.categoryName,
-          ),
-        );
-      }
+      final docRef = await _firestore.collection('todos').add(todo.toMap());
+      final newTodo = todo.copyWith(id: docRef.id);
+      _todos.add(newTodo);
       notifyListeners();
     } catch (e) {
       debugPrint('Error adding todo: $e');
@@ -139,14 +49,7 @@ class TodoProvider with ChangeNotifier {
   Future<void> updateTodo(Todo todo) async {
     try {
       debugPrint('Updating todo with date: ${todo.dueDate}');
-      if (_database != null) {
-        await _database!.update(
-          'todos',
-          todo.toMap(),
-          where: 'id = ?',
-          whereArgs: [todo.id],
-        );
-      }
+      await _firestore.collection('todos').doc(todo.id).update(todo.toMap());
 
       final index = _todos.indexWhere((t) => t.id == todo.id);
       if (index != -1) {
@@ -158,12 +61,9 @@ class TodoProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteTodo(int id) async {
+  Future<void> deleteTodo(String id) async {
     try {
-      if (_database != null) {
-        await _database!.delete('todos', where: 'id = ?', whereArgs: [id]);
-      }
-
+      await _firestore.collection('todos').doc(id).delete();
       _todos.removeWhere((todo) => todo.id == id);
       notifyListeners();
     } catch (e) {
@@ -193,7 +93,7 @@ class TodoProvider with ChangeNotifier {
     }
   }
 
-  List<Todo> getTodosByCategory(int categoryId) {
+  List<Todo> getTodosByCategory(String categoryId) {
     try {
       return _todos.where((todo) => todo.categoryId == categoryId).toList();
     } catch (e) {
