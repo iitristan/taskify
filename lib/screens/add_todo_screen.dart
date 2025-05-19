@@ -28,8 +28,12 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   String? _selectedCategoryId;
   String _selectedCategoryName = 'Default';
   bool _isEditing = false;
+  bool _isRecurring = false;
+  String? _recurrenceType;
+  DateTime? _recurrenceEndDate;
 
   final List<String> _priorities = ['Low', 'Medium', 'High'];
+  final List<String> _recurrenceTypes = ['Daily', 'Weekly', 'Monthly'];
 
   @override
   void initState() {
@@ -53,6 +57,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
       _priority = widget.todo!.priority;
       _selectedCategoryId = widget.todo!.categoryId;
       _selectedCategoryName = widget.todo!.categoryName;
+      _isRecurring = widget.todo!.isRecurring;
+      _recurrenceType = widget.todo!.recurrenceType;
+      _recurrenceEndDate = widget.todo!.recurrenceEndDate;
     }
   }
 
@@ -115,21 +122,50 @@ class _AddTodoScreenState extends State<AddTodoScreen>
     }
   }
 
+  Future<void> _selectRecurrenceEndDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _recurrenceEndDate ?? DateTime.now().add(const Duration(days: 30)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+    );
+
+    if (picked != null) {
+      setState(() {
+        _recurrenceEndDate = picked;
+      });
+    }
+  }
+
   void _saveTodo() {
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
 
     // Validate inputs
     if (title.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter a title')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title')),
+      );
       return;
     }
 
     if (description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+
+    if (_isRecurring && _recurrenceType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a recurrence type')),
+      );
+      return;
+    }
+
+    if (_isRecurring && _recurrenceEndDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select an end date for recurrence')),
       );
       return;
     }
@@ -144,6 +180,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         categoryId: _selectedCategoryId,
         categoryName: _selectedCategoryName,
         isCompleted: widget.todo!.isCompleted,
+        isRecurring: _isRecurring,
+        recurrenceType: _recurrenceType?.toLowerCase(),
+        recurrenceEndDate: _recurrenceEndDate,
       );
       context.read<TodoProvider>().updateTodo(updatedTodo);
     } else {
@@ -154,6 +193,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         priority: _priority,
         categoryId: _selectedCategoryId,
         categoryName: _selectedCategoryName,
+        isRecurring: _isRecurring,
+        recurrenceType: _recurrenceType?.toLowerCase(),
+        recurrenceEndDate: _recurrenceEndDate,
       );
       context.read<TodoProvider>().addTodo(todo);
     }
@@ -209,6 +251,108 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                   textTheme: textTheme,
                   colorScheme: colorScheme,
                   child: _buildPrioritySelector(textTheme, colorScheme),
+                ),
+
+                _buildFormField(
+                  title: 'Recurrence',
+                  textTheme: textTheme,
+                  colorScheme: colorScheme,
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        title: Text(
+                          'Recurring Task',
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        value: _isRecurring,
+                        onChanged: (value) {
+                          setState(() {
+                            _isRecurring = value;
+                            if (!value) {
+                              _recurrenceType = null;
+                              _recurrenceEndDate = null;
+                            }
+                          });
+                        },
+                        activeColor: colorScheme.primary,
+                      ),
+                      if (_isRecurring) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.primary.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _recurrenceType,
+                              hint: Text(
+                                'Select Recurrence Type',
+                                style: textTheme.bodyLarge?.copyWith(
+                                  color: colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                              icon: Icon(Icons.arrow_drop_down, color: colorScheme.primary),
+                              isExpanded: true,
+                              dropdownColor: colorScheme.surface,
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurface,
+                              ),
+                              items: _recurrenceTypes.map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _recurrenceType = newValue;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.primary.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () => _selectRecurrenceEndDate(context),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _recurrenceEndDate != null
+                                      ? DateFormat('MMM d, y').format(_recurrenceEndDate!)
+                                      : 'Select End Date',
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: _recurrenceEndDate != null
+                                        ? colorScheme.onSurface
+                                        : colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                ),
+                                Icon(Icons.calendar_today, color: colorScheme.primary, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 40),

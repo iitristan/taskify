@@ -18,7 +18,7 @@ class _CategoriesScreenState extends State<CategoriesScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   Color _selectedColor = Colors.blue;
-  IconData _selectedIcon = Icons.work;
+  IconData _selectedIcon = Icons.category;
 
   final List<Color> _availableColors = [
     Colors.blue,
@@ -77,350 +77,224 @@ class _CategoriesScreenState extends State<CategoriesScreen>
 
   void _showAddCategoryDialog() {
     _nameController.clear();
-    _selectedColor = _availableColors[0];
-    _selectedIcon = _availableIcons[0];
+    _selectedColor = Colors.blue;
+    _selectedIcon = Icons.category;
 
     showDialog(
       context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setDialogState) {
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+      builder: (context) => AlertDialog(
+        title: const Text('Add Category'),
+        content: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Category Name',
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Add Category',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Category Name',
-                                    hintText: 'Enter category name',
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter a category name';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                const Text('Select Color'),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children:
-                                      _availableColors.map((color) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            setDialogState(() {
-                                              _selectedColor = color;
-                                            });
-                                          },
-                                          child: CircleAvatar(
-                                            backgroundColor: color,
-                                            radius: 18,
-                                            child:
-                                                _selectedColor == color
-                                                    ? const Icon(
-                                                      Icons.check,
-                                                      color: Colors.white,
-                                                      size: 16,
-                                                    )
-                                                    : null,
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                                const SizedBox(height: 16),
-                                const Text('Select Icon'),
-                                const SizedBox(height: 8),
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxHeight:
-                                        MediaQuery.of(context).size.height *
-                                        0.3,
-                                    minHeight: 100,
-                                  ),
-                                  child: GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const ScrollPhysics(),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 5,
-                                          crossAxisSpacing: 8,
-                                          mainAxisSpacing: 8,
-                                        ),
-                                    itemCount: _availableIcons.length,
-                                    itemBuilder: (context, index) {
-                                      final icon = _availableIcons[index];
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setDialogState(() {
-                                            _selectedIcon = icon;
-                                          });
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color:
-                                                _selectedIcon == icon
-                                                    ? _selectedColor
-                                                        .withOpacity(0.2)
-                                                    : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  _selectedIcon == icon
-                                                      ? _selectedColor
-                                                      : Colors.grey.withOpacity(
-                                                        0.5,
-                                                      ),
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            icon,
-                                            color: _selectedColor,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<CategoryProvider>().addCategory(
-                                  TaskCategory(
-                                    name: _nameController.text,
-                                    color: _selectedColor,
-                                    icon: _selectedIcon,
-                                  ),
-                                );
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: const Text('Add'),
-                          ),
-                        ],
-                      ),
-                    ],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a category name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(_selectedIcon, color: _selectedColor),
+                    onPressed: _showIconPicker,
                   ),
-                ),
-              );
-            },
+                  IconButton(
+                    icon: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _selectedColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    onPressed: _showColorPicker,
+                  ),
+                ],
+              ),
+            ],
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                final category = Category(
+                  name: _nameController.text,
+                  color: _selectedColor,
+                  icon: _selectedIcon,
+                );
+                context.read<CategoryProvider>().addCategory(category);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showEditCategoryDialog(TaskCategory category) {
+  void _showEditCategoryDialog(Category category) {
     _nameController.text = category.name;
     _selectedColor = category.color;
     _selectedIcon = category.icon;
 
     showDialog(
       context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setDialogState) {
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Category'),
+        content: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Category Name',
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Edit Category',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a category name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(_selectedIcon, color: _selectedColor),
+                    onPressed: _showIconPicker,
+                  ),
+                  IconButton(
+                    icon: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _selectedColor,
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Category Name',
-                                    hintText: 'Enter category name',
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter a category name';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 16),
-                                const Text('Select Color'),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children:
-                                      _availableColors.map((color) {
-                                        return GestureDetector(
-                                          onTap: () {
-                                            setDialogState(() {
-                                              _selectedColor = color;
-                                            });
-                                          },
-                                          child: CircleAvatar(
-                                            backgroundColor: color,
-                                            radius: 18,
-                                            child:
-                                                _selectedColor == color
-                                                    ? const Icon(
-                                                      Icons.check,
-                                                      color: Colors.white,
-                                                      size: 16,
-                                                    )
-                                                    : null,
-                                          ),
-                                        );
-                                      }).toList(),
-                                ),
-                                const SizedBox(height: 16),
-                                const Text('Select Icon'),
-                                const SizedBox(height: 8),
-                                Container(
-                                  constraints: BoxConstraints(
-                                    maxHeight:
-                                        MediaQuery.of(context).size.height *
-                                        0.3,
-                                    minHeight: 100,
-                                  ),
-                                  child: GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const ScrollPhysics(),
-                                    gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 5,
-                                          crossAxisSpacing: 8,
-                                          mainAxisSpacing: 8,
-                                        ),
-                                    itemCount: _availableIcons.length,
-                                    itemBuilder: (context, index) {
-                                      final icon = _availableIcons[index];
-                                      return GestureDetector(
-                                        onTap: () {
-                                          setDialogState(() {
-                                            _selectedIcon = icon;
-                                          });
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color:
-                                                _selectedIcon == icon
-                                                    ? _selectedColor
-                                                        .withOpacity(0.2)
-                                                    : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color:
-                                                  _selectedIcon == icon
-                                                      ? _selectedColor
-                                                      : Colors.grey.withOpacity(
-                                                        0.5,
-                                                      ),
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            icon,
-                                            color: _selectedColor,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              if (_formKey.currentState!.validate()) {
-                                context.read<CategoryProvider>().updateCategory(
-                                  TaskCategory(
-                                    id: category.id,
-                                    name: _nameController.text,
-                                    color: _selectedColor,
-                                    icon: _selectedIcon,
-                                  ),
-                                );
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: const Text('Update'),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
+                    onPressed: _showColorPicker,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                final updatedCategory = category.copyWith(
+                  name: _nameController.text,
+                  color: _selectedColor,
+                  icon: _selectedIcon,
+                );
+                context.read<CategoryProvider>().updateCategory(updatedCategory);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showIconPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Icon'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemCount: _availableIcons.length,
+            itemBuilder: (context, index) {
+              return IconButton(
+                icon: Icon(_availableIcons[index], color: _selectedColor),
+                onPressed: () {
+                  setState(() {
+                    _selectedIcon = _availableIcons[index];
+                  });
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showColorPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Color'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemCount: _availableColors.length,
+            itemBuilder: (context, index) {
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedColor = _availableColors[index];
+                  });
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _availableColors[index],
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _selectedColor == _availableColors[index]
+                          ? Colors.white
+                          : Colors.transparent,
+                      width: 2,
+                    ),
                   ),
                 ),
               );
             },
           ),
+        ),
+      ),
     );
   }
 
@@ -470,7 +344,7 @@ class _CategoriesScreenState extends State<CategoriesScreen>
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'No Categories Yet',
+                      'No Categories',
                       style: textTheme.titleLarge?.copyWith(
                         color: colorScheme.onBackground,
                         fontWeight: FontWeight.bold,

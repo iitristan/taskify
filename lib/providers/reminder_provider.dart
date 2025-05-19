@@ -1,6 +1,5 @@
-import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:flutter/foundation.dart' as foundation;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/reminder.dart';
 import '../models/todo.dart';
@@ -14,9 +13,9 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../main.dart';
 
-class ReminderProvider with ChangeNotifier {
+class ReminderProvider with foundation.ChangeNotifier {
   List<Reminder> _reminders = [];
-  Database? _database;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isInitialized = false;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -78,7 +77,7 @@ class ReminderProvider with ChangeNotifier {
     );
 
     // Request permissions on iOS
-    if (!kIsWeb) {
+    if (!foundation.kIsWeb) {
       await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin
@@ -177,40 +176,26 @@ class ReminderProvider with ChangeNotifier {
     if (_isInitialized) return;
 
     try {
-      debugPrint('Initializing reminder database...');
+      foundation.debugPrint('Initializing reminder database...');
       await initPlugin();
-      _database = await openDatabase(
-        join(await getDatabasesPath(), 'reminder_database.db'),
-        onCreate: (db, version) {
-          debugPrint('Creating reminder database tables...');
-          return db.execute(
-            'CREATE TABLE reminders(id TEXT PRIMARY KEY, todoId TEXT, reminderTime TEXT, isRepeating INTEGER, repeatType TEXT)',
-          );
-        },
-        version: 1,
-      );
-      debugPrint('Loading reminders...');
       await loadReminders();
       _isInitialized = true;
-      debugPrint('Reminder database initialized successfully');
+      foundation.debugPrint('Reminder database initialized successfully');
     } catch (e) {
-      debugPrint('Reminder database initialization error: $e');
+      foundation.debugPrint('Reminder database initialization error: $e');
       _isInitialized = true;
       notifyListeners();
     }
   }
 
   Future<void> loadReminders() async {
-    if (_database == null) {
-      debugPrint('Database is null, skipping loadReminders');
-      return;
-    }
-
     try {
-      debugPrint('Querying reminders from database...');
-      final List<Map<String, dynamic>> maps = await _database!.query('reminders');
-      debugPrint('Found ${maps.length} reminders');
-      _reminders = List.generate(maps.length, (i) => Reminder.fromMap(maps[i]));
+      foundation.debugPrint('Loading reminders from Firestore...');
+      final QuerySnapshot snapshot = await _firestore.collection('reminders').get();
+      _reminders = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Reminder.fromMap(data, doc.id);
+      }).toList();
 
       // Schedule all reminders
       for (var reminder in _reminders) {
@@ -219,93 +204,64 @@ class ReminderProvider with ChangeNotifier {
         }
       }
 
+      foundation.debugPrint('Loaded ${_reminders.length} reminders');
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading reminders: $e');
+      foundation.debugPrint('Error loading reminders: $e');
     }
   }
 
   Future<void> addReminder(Reminder reminder) async {
     try {
-      if (_database != null) {
-        final id = await _database!.insert(
-          'reminders',
-          reminder.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-
-        final newReminder = Reminder(
-          id: id.toString(),
-          todoId: reminder.todoId,
-          reminderTime: reminder.reminderTime,
-          isRepeating: reminder.isRepeating,
-          repeatType: reminder.repeatType,
-        );
-
-        _reminders.add(newReminder);
-
-        // Schedule notification
-        await scheduleNotification(newReminder);
-      } else {
-        // For web platform, use in-memory data
-        final id = _reminders.isEmpty ? '1' : _reminders.last.id!;
-        final newReminder = Reminder(
-          id: id,
-          todoId: reminder.todoId,
-          reminderTime: reminder.reminderTime,
-          isRepeating: reminder.isRepeating,
-          repeatType: reminder.repeatType,
-        );
-
-        _reminders.add(newReminder);
-      }
+      final docRef = await _firestore.collection('reminders').add(reminder.toMap());
+      final newReminder = reminder.copyWith(id: docRef.id);
+      _reminders.add(newReminder);
+      await scheduleNotification(newReminder);
       notifyListeners();
     } catch (e) {
-      print('Error adding reminder: $e');
+      foundation.debugPrint('Error adding reminder: $e');
     }
   }
 
   Future<void> updateReminder(Reminder reminder) async {
     try {
-      if (_database != null) {
-        await _database!.update(
-          'reminders',
-          reminder.toMap(),
-          where: 'id = ?',
-          whereArgs: [reminder.id],
-        );
-      }
-
+      await _firestore.collection('reminders').doc(reminder.id).update(reminder.toMap());
       final index = _reminders.indexWhere((r) => r.id == reminder.id);
       if (index != -1) {
         // Cancel old notification
         await cancelNotification(reminder.id!);
-
         _reminders[index] = reminder;
-
         // Schedule new notification
         await scheduleNotification(reminder);
-
         notifyListeners();
       }
     } catch (e) {
-      print('Error updating reminder: $e');
+      foundation.debugPrint('Error updating reminder: $e');
     }
   }
 
   Future<void> deleteReminder(String id) async {
     try {
-      if (_database != null) {
-        await _database!.delete('reminders', where: 'id = ?', whereArgs: [id]);
-      }
-
-      // Cancel notification
+      // Cancel notification first
       await cancelNotification(id);
-
+      
+      // Then delete from Firestore
+      await _firestore.collection('reminders').doc(id).delete();
+      
+      // Finally remove from local list
       _reminders.removeWhere((reminder) => reminder.id == id);
       notifyListeners();
     } catch (e) {
-      print('Error deleting reminder: $e');
+      foundation.debugPrint('Error deleting reminder: $e');
+    }
+  }
+
+  Future<void> cancelNotification(String id) async {
+    try {
+      final notificationId = id.hashCode.abs();
+      await flutterLocalNotificationsPlugin.cancel(notificationId);
+    } catch (e) {
+      foundation.debugPrint('Error canceling notification: $e');
     }
   }
 
@@ -357,6 +313,9 @@ class ReminderProvider with ChangeNotifier {
         tz.local,
       );
 
+      // Generate a unique integer ID from the string ID
+      final notificationId = reminder.id!.hashCode.abs();
+
       if (reminder.isRepeating) {
         // Handle repeating notifications based on repeatType
         RepeatInterval interval;
@@ -376,7 +335,7 @@ class ReminderProvider with ChangeNotifier {
         }
 
         await flutterLocalNotificationsPlugin.periodicallyShow(
-          int.parse(reminder.id!),
+          notificationId,
           'Task Reminder',
           'You have a task to complete',
           interval,
@@ -385,7 +344,7 @@ class ReminderProvider with ChangeNotifier {
         );
       } else {
         await flutterLocalNotificationsPlugin.zonedSchedule(
-          int.parse(reminder.id!),
+          notificationId,
           'Task Reminder',
           'You have a task to complete',
           scheduledDate,
@@ -397,12 +356,8 @@ class ReminderProvider with ChangeNotifier {
         );
       }
     } catch (e) {
-      debugPrint('Error scheduling notification: $e');
+      foundation.debugPrint('Error scheduling notification: $e');
     }
-  }
-
-  Future<void> cancelNotification(String id) async {
-    await flutterLocalNotificationsPlugin.cancel(int.parse(id));
   }
 
   List<Reminder> getRemindersForTodo(String todoId) {

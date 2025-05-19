@@ -10,6 +10,7 @@ class TodoProvider with ChangeNotifier {
   bool _isInitialized = false;
 
   List<Todo> get todos => _todos;
+  bool get isInitialized => _isInitialized;
 
   Future<void> initDatabase() async {
     if (_isInitialized) return;
@@ -74,9 +75,29 @@ class TodoProvider with ChangeNotifier {
   List<Todo> getTodosForDate(DateTime date) {
     try {
       return _todos.where((todo) {
-        return todo.dueDate.year == date.year &&
+        // Check if the task is due on this date
+        bool isDueOnDate = todo.dueDate.year == date.year &&
             todo.dueDate.month == date.month &&
             todo.dueDate.day == date.day;
+
+        // If it's a recurring task, check if it falls on this date
+        if (todo.isRecurring && todo.recurrenceType != null && todo.recurrenceEndDate != null) {
+          // Check if the date is within the recurrence period
+          if (date.isBefore(todo.recurrenceEndDate!)) {
+            switch (todo.recurrenceType) {
+              case 'daily':
+                return true;
+              case 'weekly':
+                return todo.dueDate.weekday == date.weekday;
+              case 'monthly':
+                return todo.dueDate.day == date.day;
+              default:
+                return false;
+            }
+          }
+        }
+
+        return isDueOnDate;
       }).toList();
     } catch (e) {
       debugPrint('Error filtering todos by date: $e');

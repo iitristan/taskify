@@ -10,6 +10,9 @@ class Todo {
   final String priority;
   final String? categoryId;
   final String categoryName;
+  final bool isRecurring;
+  final String? recurrenceType; // daily, weekly, monthly
+  final DateTime? recurrenceEndDate;
 
   Todo({
     this.id,
@@ -20,6 +23,9 @@ class Todo {
     this.priority = 'Medium',
     this.categoryId,
     this.categoryName = 'Default',
+    this.isRecurring = false,
+    this.recurrenceType,
+    this.recurrenceEndDate,
   });
 
   Map<String, dynamic> toMap() {
@@ -31,6 +37,9 @@ class Todo {
       'priority': priority,
       'categoryId': categoryId,
       'categoryName': categoryName,
+      'isRecurring': isRecurring,
+      'recurrenceType': recurrenceType,
+      'recurrenceEndDate': recurrenceEndDate != null ? Timestamp.fromDate(recurrenceEndDate!) : null,
     };
   }
 
@@ -45,6 +54,9 @@ class Todo {
       priority: data['priority'] ?? 'Medium',
       categoryId: data['categoryId'],
       categoryName: data['categoryName'] ?? 'Default',
+      isRecurring: data['isRecurring'] ?? false,
+      recurrenceType: data['recurrenceType'],
+      recurrenceEndDate: data['recurrenceEndDate'] != null ? (data['recurrenceEndDate'] as Timestamp).toDate() : null,
     );
   }
 
@@ -57,6 +69,9 @@ class Todo {
     String? priority,
     String? categoryId,
     String? categoryName,
+    bool? isRecurring,
+    String? recurrenceType,
+    DateTime? recurrenceEndDate,
   }) {
     return Todo(
       id: id ?? this.id,
@@ -67,6 +82,9 @@ class Todo {
       priority: priority ?? this.priority,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurrenceType: recurrenceType ?? this.recurrenceType,
+      recurrenceEndDate: recurrenceEndDate ?? this.recurrenceEndDate,
     );
   }
 

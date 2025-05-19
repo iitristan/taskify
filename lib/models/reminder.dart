@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Reminder {
   final String? id;
   final String todoId;
@@ -15,21 +17,20 @@ class Reminder {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'todoId': todoId,
-      'reminderTime': reminderTime.toIso8601String(),
-      'isRepeating': isRepeating ? 1 : 0,
+      'reminderTime': Timestamp.fromDate(reminderTime),
+      'isRepeating': isRepeating,
       'repeatType': repeatType,
     };
   }
 
-  factory Reminder.fromMap(Map<String, dynamic> map) {
+  factory Reminder.fromMap(Map<String, dynamic> map, String docId) {
     return Reminder(
-      id: map['id'],
-      todoId: map['todoId'],
-      reminderTime: DateTime.parse(map['reminderTime']),
-      isRepeating: map['isRepeating'] == 1,
-      repeatType: map['repeatType'],
+      id: docId,
+      todoId: map['todoId'] ?? '',
+      reminderTime: (map['reminderTime'] as Timestamp).toDate(),
+      isRepeating: map['isRepeating'] ?? false,
+      repeatType: map['repeatType'] ?? 'none',
     );
   }
 

@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen>
   // Filter variables
   String? _priorityFilter;
   bool? _completionFilter;
-  int? _categoryFilter;
+  String? _categoryFilter;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -130,7 +130,46 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHeader(textTheme, colorScheme),
+                  // Taskify Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Taskify',
+                              style: textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              today,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onBackground.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            onPressed: _navigateToProfile,
+                            icon: Icon(Icons.person, color: colorScheme.primary),
+                            iconSize: 28,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildSearchBar(colorScheme),
                   const SizedBox(height: 32),
@@ -150,48 +189,6 @@ class _HomeScreenState extends State<HomeScreen>
         elevation: 8,
         child: const Icon(Icons.add, size: 28),
       ),
-    );
-  }
-
-  Widget _buildHeader(TextTheme textTheme, ColorScheme colorScheme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hello,',
-              style: textTheme.bodyLarge?.copyWith(
-                color: colorScheme.onBackground.withOpacity(0.7),
-                fontSize: 16,
-              ),
-            ),
-            Consumer<UserProvider>(
-              builder: (context, userProvider, child) {
-                return Text(
-                  userProvider.name,
-                  style: textTheme.headlineMedium?.copyWith(
-                    color: colorScheme.onBackground,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            onPressed: _navigateToProfile,
-            icon: Icon(Icons.person, color: colorScheme.primary),
-            iconSize: 28,
-          ),
-        ),
-      ],
     );
   }
 
@@ -329,7 +326,37 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         const SizedBox(height: 16),
-        _buildTasksList(colorScheme, textTheme),
+        Consumer<TodoProvider>(
+          builder: (context, todoProvider, child) {
+            if (!todoProvider.isInitialized) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading tasks...',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onBackground.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return _buildTasksList(colorScheme, textTheme);
+          },
+        ),
       ],
     );
   }
@@ -738,7 +765,14 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      if (todo.isRecurring) ...[
+                        Icon(
+                          Icons.repeat,
+                          size: 16,
+                          color: colorScheme.primary.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Text(
                         DateFormat('h:mm a').format(todo.dueDate),
                         style: textTheme.bodySmall?.copyWith(
@@ -766,15 +800,31 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ],
-                  if (todo.categoryName != 'Default') ...[
+                  if (todo.categoryName != 'Default' || todo.isRecurring) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      todo.categoryName,
-                      style: textTheme.bodySmall?.copyWith(
-                        fontSize: 12,
-                        height: 1.2,
-                        color: priorityColor.withOpacity(0.8),
-                      ),
+                    Row(
+                      children: [
+                        if (todo.categoryName != 'Default')
+                          Text(
+                            todo.categoryName,
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              height: 1.2,
+                              color: priorityColor.withOpacity(0.8),
+                            ),
+                          ),
+                        if (todo.categoryName != 'Default' && todo.isRecurring)
+                          const SizedBox(width: 8),
+                        if (todo.isRecurring)
+                          Text(
+                            '${todo.recurrenceType?.toUpperCase()} until ${DateFormat('MMM d').format(todo.recurrenceEndDate!)}',
+                            style: textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              height: 1.2,
+                              color: colorScheme.primary.withOpacity(0.8),
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ],
