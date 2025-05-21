@@ -53,10 +53,6 @@ class _SignupScreenState extends State<SignupScreen>
     super.dispose();
   }
 
-  void _navigateBack() {
-    Navigator.pop(context);
-  }
-
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -67,12 +63,27 @@ class _SignupScreenState extends State<SignupScreen>
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: Theme.of(context).colorScheme.error,
+        backgroundColor: const Color(0xFFED4245), // Discord red
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(10),
       ),
     );
+  }
+
+  String _getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'email-already-in-use':
+        return 'An account already exists with this email';
+      case 'invalid-email':
+        return 'Invalid email address';
+      case 'operation-not-allowed':
+        return 'Email/password accounts are not enabled';
+      case 'weak-password':
+        return 'Password is too weak';
+      default:
+        return 'An error occurred. Please try again';
+    }
   }
 
   Future<void> _signup() async {
@@ -88,21 +99,28 @@ class _SignupScreenState extends State<SignupScreen>
       );
       // If we reach here, signup was successful
     } catch (e) {
-      // Make sure to set _isLoading to false on any error
       if (!mounted) return;
       setState(() => _isLoading = false);
-      _showError(e.toString());
+      String errorMessage = _getErrorMessage(e.toString().toLowerCase());
+      _showError(errorMessage);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
+      backgroundColor: const Color(0xFF36393F), // Discord dark theme background
       body: Container(
-        decoration: const BoxDecoration(color: Color(0xFF3D3B4F)),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF36393F), // Discord dark theme background
+              Color(0xFF2F3136), // Discord dark theme secondary
+            ],
+          ),
+        ),
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
@@ -121,25 +139,22 @@ class _SignupScreenState extends State<SignupScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(24),
-                              child: Container(
-                                width: double.infinity,
-                                height: 80,
-                                color: const Color(0xFFCBB2FE),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.person_add_outlined,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
-                                ),
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5865F2).withOpacity(0.2), // Discord blurple
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: const Icon(
+                                Icons.person_add_outlined,
+                                size: 48,
+                                color: Color(0xFF5865F2), // Discord blurple
                               ),
                             ),
                             const SizedBox(height: 30),
-                            Text(
+                            const Text(
                               'Create Account',
-                              style: textTheme.headlineMedium?.copyWith(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                                 fontSize: 30,
@@ -148,257 +163,182 @@ class _SignupScreenState extends State<SignupScreen>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Join Taskify to organize your life',
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: Colors.white70,
+                              'Sign up to get started',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
                                 fontSize: 16,
                               ),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 40),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                color: const Color(0xFF1A1A1A),
-                                child: TextFormField(
-                                  controller: _nameController,
-                                  textCapitalization: TextCapitalization.words,
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: InputDecoration(
-                                    labelText: 'Full Name',
-                                    labelStyle: TextStyle(
-                                      color: Colors.white70,
-                                    ),
-                                    floatingLabelBehavior:
-                                        FloatingLabelBehavior.auto,
-                                    prefixIcon: Icon(
-                                      Icons.person,
-                                      color: Colors.white70,
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 12,
-                                    ),
-                                    errorStyle: TextStyle(
-                                      color: Color(0xFFE0A2A2),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      height: 0.8,
-                                    ),
-                                    errorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1,
-                                      ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
-                                    ),
-                                    focusedErrorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1.5,
-                                      ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your name';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                            Card(
+                              elevation: 8,
+                              shadowColor: Colors.black.withOpacity(0.2),
+                              color: const Color(0xFF2F3136), // Discord dark theme secondary
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                color: const Color(0xFF1A1A1A),
-                                child: TextFormField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: InputDecoration(
-                                    labelText: 'Email',
-                                    labelStyle: TextStyle(
-                                      color: Colors.white70,
-                                    ),
-                                    floatingLabelBehavior:
-                                        FloatingLabelBehavior.auto,
-                                    prefixIcon: Icon(
-                                      Icons.email,
-                                      color: Colors.white70,
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 12,
-                                    ),
-                                    errorStyle: TextStyle(
-                                      color: Color(0xFFE0A2A2),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      height: 0.8,
-                                    ),
-                                    errorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1,
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  children: [
+                                    TextFormField(
+                                      controller: _nameController,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        labelText: 'Name',
+                                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                        prefixIcon: const Icon(Icons.person, color: Color(0xFF5865F2)), // Discord blurple
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: const Color(0xFF202225), // Discord dark theme input
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF5865F2), // Discord blurple
+                                            width: 2,
+                                          ),
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
-                                    ),
-                                    focusedErrorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1.5,
-                                      ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your email';
-                                    }
-                                    if (!value.contains('@')) {
-                                      return 'Please enter a valid email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Container(
-                                color: const Color(0xFF1A1A1A),
-                                child: TextFormField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    labelStyle: TextStyle(
-                                      color: Colors.white70,
-                                    ),
-                                    floatingLabelBehavior:
-                                        FloatingLabelBehavior.auto,
-                                    prefixIcon: Icon(
-                                      Icons.lock,
-                                      color: Colors.white70,
-                                    ),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility
-                                            : Icons.visibility_off,
-                                        color: Colors.white70,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _obscurePassword = !_obscurePassword;
-                                        });
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your name';
+                                        }
+                                        return null;
                                       },
                                     ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 12,
-                                    ),
-                                    errorStyle: TextStyle(
-                                      color: Color(0xFFE0A2A2),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      height: 0.8,
-                                    ),
-                                    errorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1,
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        labelText: 'Email',
+                                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                        prefixIcon: const Icon(Icons.email, color: Color(0xFF5865F2)), // Discord blurple
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: const Color(0xFF202225), // Discord dark theme input
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF5865F2), // Discord blurple
+                                            width: 2,
+                                          ),
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your email';
+                                        }
+                                        if (!value.contains('@')) {
+                                          return 'Please enter a valid email';
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                    focusedErrorBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: Color(0xFFE0A2A2),
-                                        width: 1.5,
+                                    const SizedBox(height: 16),
+                                    TextFormField(
+                                      controller: _passwordController,
+                                      obscureText: _obscurePassword,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: InputDecoration(
+                                        labelText: 'Password',
+                                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                        prefixIcon: const Icon(Icons.lock, color: Color(0xFF5865F2)), // Discord blurple
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _obscurePassword = !_obscurePassword;
+                                            });
+                                          },
+                                        ),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        filled: true,
+                                        fillColor: const Color(0xFF202225), // Discord dark theme input
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF5865F2), // Discord blurple
+                                            width: 2,
+                                          ),
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(16),
-                                        bottomRight: Radius.circular(16),
-                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your password';
+                                        }
+                                        if (value.length < 6) {
+                                          return 'Password must be at least 6 characters';
+                                        }
+                                        return null;
+                                      },
                                     ),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please enter your password';
-                                    }
-                                    if (value.length < 6) {
-                                      return 'Password must be at least 6 characters';
-                                    }
-                                    return null;
-                                  },
+                                  ],
                                 ),
                               ),
                             ),
                             const SizedBox(height: 32),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: ElevatedButton(
-                                onPressed: _isLoading ? null : _signup,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFCBB2FE),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  elevation: 0,
+                            ElevatedButton(
+                              onPressed: _isLoading ? null : _signup,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF5865F2), // Discord blurple
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child:
-                                    _isLoading
-                                        ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
-                                                ),
-                                          ),
-                                        )
-                                        : const Text(
-                                          'Create Account',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                elevation: 4,
                               ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Sign Up',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                             ),
                             const SizedBox(height: 24),
                             TextButton(
-                              onPressed: _navigateBack,
+                              onPressed: () => Navigator.pop(context),
                               child: Text(
                                 'Already have an account? Sign In',
                                 style: TextStyle(
-                                  color: const Color(0xFFCBB2FE),
+                                  color: const Color(0xFF5865F2).withOpacity(0.9), // Discord blurple
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),

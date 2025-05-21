@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/reminder_provider.dart';
+import '../providers/auth_provider.dart';
 import 'home_screen.dart';
+import 'auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -57,9 +59,14 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(seconds: 2));
 
     if (mounted) {
+      final authProvider = context.read<AuthProvider>();
+      final isAuthenticated = authProvider.isAuthenticated;
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, animation, secondaryAnimation) => const HomeScreen(),
+          pageBuilder: (_, animation, secondaryAnimation) => isAuthenticated
+              ? const HomeScreen()
+              : const LoginScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

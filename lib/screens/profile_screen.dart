@@ -5,6 +5,7 @@ import '../providers/theme_provider.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
 import '../screens/notification_settings_screen.dart';
+import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -331,6 +332,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   colorScheme: colorScheme,
                   onTap: () => _showAboutDialog(context, colorScheme),
                 ),
+                const Divider(),
+                _buildSettingsItem(
+                  icon: Icons.logout,
+                  title: 'Logout',
+                  subtitle: 'Sign out of your account',
+                  colorScheme: colorScheme,
+                  onTap: () => _showLogoutConfirmation(context, colorScheme),
+                ),
               ],
             ),
           ),
@@ -388,6 +397,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'Taskify is a task management app designed to help you organize your daily tasks efficiently.',
         ),
       ],
+    );
+  }
+
+  void _showLogoutConfirmation(BuildContext context, ColorScheme colorScheme) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await context.read<AuthProvider>().signOut();
+                if (context.mounted) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/splash',
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error signing out: ${e.toString()}'),
+                      backgroundColor: colorScheme.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
     );
   }
 
