@@ -103,7 +103,8 @@ class ReminderProvider with foundation.ChangeNotifier {
         );
         final todo = todoProvider.todos.firstWhere(
           (todo) => todo.id == todoId,
-          orElse: () => Todo(title: '', description: '', dueDate: DateTime.now()),
+          orElse:
+              () => Todo(title: '', description: '', dueDate: DateTime.now()),
         );
         if (todo.id != null) {
           await todoProvider.updateTodo(todo.copyWith(isCompleted: true));
@@ -176,13 +177,10 @@ class ReminderProvider with foundation.ChangeNotifier {
     if (_isInitialized) return;
 
     try {
-      foundation.debugPrint('Initializing reminder database...');
       await initPlugin();
       await loadReminders();
       _isInitialized = true;
-      foundation.debugPrint('Reminder database initialized successfully');
     } catch (e) {
-      foundation.debugPrint('Reminder database initialization error: $e');
       _isInitialized = true;
       notifyListeners();
     }
@@ -190,12 +188,13 @@ class ReminderProvider with foundation.ChangeNotifier {
 
   Future<void> loadReminders() async {
     try {
-      foundation.debugPrint('Loading reminders from Firestore...');
-      final QuerySnapshot snapshot = await _firestore.collection('reminders').get();
-      _reminders = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Reminder.fromMap(data, doc.id);
-      }).toList();
+      final QuerySnapshot snapshot =
+          await _firestore.collection('reminders').get();
+      _reminders =
+          snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return Reminder.fromMap(data, doc.id);
+          }).toList();
 
       // Schedule all reminders
       for (var reminder in _reminders) {
@@ -204,28 +203,32 @@ class ReminderProvider with foundation.ChangeNotifier {
         }
       }
 
-      foundation.debugPrint('Loaded ${_reminders.length} reminders');
       notifyListeners();
     } catch (e) {
-      foundation.debugPrint('Error loading reminders: $e');
+      notifyListeners();
     }
   }
 
   Future<void> addReminder(Reminder reminder) async {
     try {
-      final docRef = await _firestore.collection('reminders').add(reminder.toMap());
+      final docRef = await _firestore
+          .collection('reminders')
+          .add(reminder.toMap());
       final newReminder = reminder.copyWith(id: docRef.id);
       _reminders.add(newReminder);
       await scheduleNotification(newReminder);
       notifyListeners();
     } catch (e) {
-      foundation.debugPrint('Error adding reminder: $e');
+      notifyListeners();
     }
   }
 
   Future<void> updateReminder(Reminder reminder) async {
     try {
-      await _firestore.collection('reminders').doc(reminder.id).update(reminder.toMap());
+      await _firestore
+          .collection('reminders')
+          .doc(reminder.id)
+          .update(reminder.toMap());
       final index = _reminders.indexWhere((r) => r.id == reminder.id);
       if (index != -1) {
         // Cancel old notification
@@ -236,7 +239,7 @@ class ReminderProvider with foundation.ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      foundation.debugPrint('Error updating reminder: $e');
+      notifyListeners();
     }
   }
 
@@ -244,15 +247,15 @@ class ReminderProvider with foundation.ChangeNotifier {
     try {
       // Cancel notification first
       await cancelNotification(id);
-      
+
       // Then delete from Firestore
       await _firestore.collection('reminders').doc(id).delete();
-      
+
       // Finally remove from local list
       _reminders.removeWhere((reminder) => reminder.id == id);
       notifyListeners();
     } catch (e) {
-      foundation.debugPrint('Error deleting reminder: $e');
+      notifyListeners();
     }
   }
 
@@ -261,7 +264,7 @@ class ReminderProvider with foundation.ChangeNotifier {
       final notificationId = id.hashCode.abs();
       await flutterLocalNotificationsPlugin.cancel(notificationId);
     } catch (e) {
-      foundation.debugPrint('Error canceling notification: $e');
+      notifyListeners();
     }
   }
 
@@ -356,7 +359,7 @@ class ReminderProvider with foundation.ChangeNotifier {
         );
       }
     } catch (e) {
-      foundation.debugPrint('Error scheduling notification: $e');
+      notifyListeners();
     }
   }
 

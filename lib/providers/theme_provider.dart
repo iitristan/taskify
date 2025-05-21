@@ -17,7 +17,7 @@ class ThemeProvider with ChangeNotifier {
       _isDarkMode = prefs.getBool(_isDarkModeKey) ?? true;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error loading theme preference: $e');
+      // Handle error silently
     }
   }
 
@@ -27,7 +27,7 @@ class ThemeProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isDarkModeKey, _isDarkMode);
     } catch (e) {
-      debugPrint('Error saving theme preference: $e');
+      // Handle error silently
     }
     notifyListeners();
   }
@@ -36,31 +36,40 @@ class ThemeProvider with ChangeNotifier {
     return _isDarkMode ? _getDarkTheme() : _getLightTheme();
   }
 
+  // Dark theme colors
+  static const _darkPrimaryColor = Color(0xFF7C4DFF);
+  static const _darkSecondaryColor = Color(0xFF00E5FF);
+  static const _darkTertiaryColor = Color(0xFFFFD54F);
+  static const _darkBackgroundColor = Color(0xFF121212);
+  static const _darkSurfaceColor = Color(0xFF1F1F1F);
+  static const _darkErrorColor = Color(0xFFFF5252);
+
+  // Light theme colors
+  static const _lightPrimaryColor = Color(0xFF6200EE);
+  static const _lightSecondaryColor = Color(0xFF03DAC6);
+  static const _lightTertiaryColor = Color(0xFFFFB400);
+  static const _lightBackgroundColor = Color(0xFFF5F5F5);
+  static const _lightSurfaceColor = Colors.white;
+  static const _lightErrorColor = Color(0xFFB00020);
+
   // Dark theme configuration
   ThemeData _getDarkTheme() {
-    const primaryColor = Color(0xFF7C4DFF);
-    const secondaryColor = Color(0xFF00E5FF);
-    const tertiaryColor = Color(0xFFFFD54F);
-    const backgroundColor = Color(0xFF121212);
-    const surfaceColor = Color(0xFF1F1F1F);
-    const errorColor = Color(0xFFFF5252);
-
     return ThemeData(
       useMaterial3: true,
       colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        secondary: secondaryColor,
-        tertiary: tertiaryColor,
-        surface: surfaceColor,
-        background: backgroundColor,
-        error: errorColor,
+        primary: _darkPrimaryColor,
+        secondary: _darkSecondaryColor,
+        tertiary: _darkTertiaryColor,
+        surface: _darkSurfaceColor,
+        background: _darkBackgroundColor,
+        error: _darkErrorColor,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
         onSurface: Colors.white,
         onBackground: Colors.white,
         onError: Colors.black,
       ),
-      scaffoldBackgroundColor: backgroundColor,
+      scaffoldBackgroundColor: _darkBackgroundColor,
       appBarTheme: _buildDarkAppBarTheme(),
       cardTheme: _buildDarkCardTheme(),
       floatingActionButtonTheme: _buildDarkFabTheme(),
@@ -71,29 +80,22 @@ class ThemeProvider with ChangeNotifier {
 
   // Light theme configuration
   ThemeData _getLightTheme() {
-    const primaryColor = Color(0xFF6200EE);
-    const secondaryColor = Color(0xFF03DAC6);
-    const tertiaryColor = Color(0xFFFFB400);
-    const backgroundColor = Color(0xFFF5F5F5);
-    const surfaceColor = Colors.white;
-    const errorColor = Color(0xFFB00020);
-
     return ThemeData(
       useMaterial3: true,
       colorScheme: const ColorScheme.light(
-        primary: primaryColor,
-        secondary: secondaryColor,
-        tertiary: tertiaryColor,
-        surface: surfaceColor,
-        background: backgroundColor,
-        error: errorColor,
+        primary: _lightPrimaryColor,
+        secondary: _lightSecondaryColor,
+        tertiary: _lightTertiaryColor,
+        surface: _lightSurfaceColor,
+        background: _lightBackgroundColor,
+        error: _lightErrorColor,
         onPrimary: Colors.white,
         onSecondary: Colors.black,
         onSurface: Colors.black,
         onBackground: Colors.black,
         onError: Colors.white,
       ),
-      scaffoldBackgroundColor: backgroundColor,
+      scaffoldBackgroundColor: _lightBackgroundColor,
       appBarTheme: _buildLightAppBarTheme(),
       cardTheme: _buildLightCardTheme(),
       floatingActionButtonTheme: _buildLightFabTheme(),
@@ -105,7 +107,7 @@ class ThemeProvider with ChangeNotifier {
   // Dark theme component styles
   AppBarTheme _buildDarkAppBarTheme() {
     return const AppBarTheme(
-      backgroundColor: Color(0xFF1F1F1F),
+      backgroundColor: _darkSurfaceColor,
       elevation: 0,
       centerTitle: true,
       shape: RoundedRectangleBorder(
@@ -121,7 +123,7 @@ class ThemeProvider with ChangeNotifier {
 
   CardTheme _buildDarkCardTheme() {
     return CardTheme(
-      color: const Color(0xFF1F1F1F),
+      color: _darkSurfaceColor,
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -130,7 +132,7 @@ class ThemeProvider with ChangeNotifier {
 
   FloatingActionButtonThemeData _buildDarkFabTheme() {
     return const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFF7C4DFF),
+      backgroundColor: _darkPrimaryColor,
       foregroundColor: Colors.white,
       elevation: 8,
     );
@@ -150,7 +152,7 @@ class ThemeProvider with ChangeNotifier {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF7C4DFF), width: 2),
+        borderSide: const BorderSide(color: _darkPrimaryColor, width: 2),
       ),
       labelStyle: const TextStyle(color: Colors.white70),
     );
@@ -159,7 +161,7 @@ class ThemeProvider with ChangeNotifier {
   ElevatedButtonThemeData _buildDarkButtonTheme() {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF7C4DFF),
+        backgroundColor: _darkPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 4,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -172,7 +174,7 @@ class ThemeProvider with ChangeNotifier {
   // Light theme component styles
   AppBarTheme _buildLightAppBarTheme() {
     return const AppBarTheme(
-      backgroundColor: Color(0xFF6200EE),
+      backgroundColor: _lightPrimaryColor,
       elevation: 0,
       centerTitle: true,
       shape: RoundedRectangleBorder(
@@ -188,7 +190,7 @@ class ThemeProvider with ChangeNotifier {
 
   CardTheme _buildLightCardTheme() {
     return CardTheme(
-      color: Colors.white,
+      color: _lightSurfaceColor,
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.2),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -197,7 +199,7 @@ class ThemeProvider with ChangeNotifier {
 
   FloatingActionButtonThemeData _buildLightFabTheme() {
     return const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFF6200EE),
+      backgroundColor: _lightPrimaryColor,
       foregroundColor: Colors.white,
       elevation: 6,
     );
@@ -217,7 +219,7 @@ class ThemeProvider with ChangeNotifier {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF6200EE), width: 2),
+        borderSide: const BorderSide(color: _lightPrimaryColor, width: 2),
       ),
       labelStyle: const TextStyle(color: Colors.black54),
     );
@@ -226,7 +228,7 @@ class ThemeProvider with ChangeNotifier {
   ElevatedButtonThemeData _buildLightButtonTheme() {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF6200EE),
+        backgroundColor: _lightPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 2,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),

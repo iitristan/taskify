@@ -76,41 +76,28 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  void _navigateTo(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+  }
+
   void _navigateToAddTodo() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddTodoScreen(selectedDate: DateTime.now()),
-      ),
-    );
+    _navigateTo(AddTodoScreen(selectedDate: DateTime.now()));
   }
 
   void _navigateToProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-    );
+    _navigateTo(const ProfileScreen());
   }
 
   void _navigateToCalendar() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CalendarScreen()),
-    );
+    _navigateTo(const CalendarScreen());
   }
 
   void _navigateToCategories() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CategoriesScreen()),
-    );
+    _navigateTo(const CategoriesScreen());
   }
 
   void _navigateToReminders() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const RemindersScreen()),
-    );
+    _navigateTo(const RemindersScreen());
   }
 
   @override
@@ -130,46 +117,7 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Taskify Header
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Taskify',
-                              style: textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              today,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onBackground.withOpacity(0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            onPressed: _navigateToProfile,
-                            icon: Icon(Icons.person, color: colorScheme.primary),
-                            iconSize: 28,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildHeader(today, textTheme, colorScheme),
                   const SizedBox(height: 24),
                   _buildSearchBar(colorScheme),
                   const SizedBox(height: 32),
@@ -189,6 +137,66 @@ class _HomeScreenState extends State<HomeScreen>
         elevation: 8,
         child: const Icon(Icons.add, size: 28),
       ),
+    );
+  }
+
+  Widget _buildHeader(
+    String today,
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Taskify',
+                style: textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                today,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onBackground.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: _navigateToProfile,
+              icon: Icon(Icons.person, color: colorScheme.primary),
+              iconSize: 28,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper methods for text styling
+  TextStyle? getTitleStyle(TextTheme textTheme, ColorScheme colorScheme) {
+    return textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: colorScheme.onBackground,
+    );
+  }
+
+  TextStyle? getSubtitleStyle(TextTheme textTheme, ColorScheme colorScheme) {
+    return textTheme.bodyMedium?.copyWith(
+      color: colorScheme.onBackground.withOpacity(0.7),
     );
   }
 
@@ -248,13 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Quick Actions',
-          style: textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: colorScheme.onBackground,
-          ),
-        ),
+        Text('Quick Actions', style: getTitleStyle(textTheme, colorScheme)),
         const SizedBox(height: 16),
         GridView.count(
           crossAxisCount: 2,
@@ -307,19 +309,8 @@ class _HomeScreenState extends State<HomeScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'My Day',
-                  style: textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onBackground,
-                  ),
-                ),
-                Text(
-                  today,
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onBackground.withOpacity(0.7),
-                  ),
-                ),
+                Text('My Day', style: getTitleStyle(textTheme, colorScheme)),
+                Text(today, style: getSubtitleStyle(textTheme, colorScheme)),
               ],
             ),
             _buildFilterButton(colorScheme),
@@ -346,9 +337,7 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 16),
                     Text(
                       'Loading tasks...',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onBackground.withOpacity(0.7),
-                      ),
+                      style: getSubtitleStyle(textTheme, colorScheme),
                     ),
                   ],
                 ),
@@ -756,12 +745,14 @@ class _HomeScreenState extends State<HomeScreen>
                           style: textTheme.titleMedium?.copyWith(
                             fontSize: 15,
                             height: 1.3,
-                            color: todo.isCompleted
-                                ? colorScheme.onSurface.withOpacity(0.3)
-                                : colorScheme.onSurface,
-                            decoration: todo.isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
+                            color:
+                                todo.isCompleted
+                                    ? colorScheme.onSurface.withOpacity(0.3)
+                                    : colorScheme.onSurface,
+                            decoration:
+                                todo.isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : null,
                           ),
                         ),
                       ),
@@ -791,12 +782,14 @@ class _HomeScreenState extends State<HomeScreen>
                       style: textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
                         height: 1.3,
-                        color: todo.isCompleted
-                            ? colorScheme.onSurface.withOpacity(0.3)
-                            : colorScheme.onSurface.withOpacity(0.6),
-                        decoration: todo.isCompleted
-                            ? TextDecoration.lineThrough
-                            : null,
+                        color:
+                            todo.isCompleted
+                                ? colorScheme.onSurface.withOpacity(0.3)
+                                : colorScheme.onSurface.withOpacity(0.6),
+                        decoration:
+                            todo.isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
                       ),
                     ),
                   ],

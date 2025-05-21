@@ -15,7 +15,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   bool _isEditing = false;
 
   @override
@@ -27,23 +26,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _initializeControllers() {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     _nameController.text = userProvider.name;
-    _emailController.text = userProvider.email;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 
   void _toggleEditMode() {
     if (_isEditing) {
       // Save user data to provider
-      Provider.of<UserProvider>(context, listen: false).updateUserData(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-      );
+      Provider.of<UserProvider>(
+        context,
+        listen: false,
+      ).updateUserData(name: _nameController.text.trim());
     }
     setState(() {
       _isEditing = !_isEditing;
@@ -117,27 +114,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditableUserInfo(TextTheme textTheme) {
-    return Column(
-      children: [
-        TextField(
-          controller: _nameController,
-          textAlign: TextAlign.center,
-          style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          decoration: const InputDecoration(
-            hintText: 'Enter your name',
-            border: InputBorder.none,
-          ),
-        ),
-        TextField(
-          controller: _emailController,
-          textAlign: TextAlign.center,
-          style: textTheme.bodyMedium,
-          decoration: const InputDecoration(
-            hintText: 'Enter your email',
-            border: InputBorder.none,
-          ),
-        ),
-      ],
+    return TextField(
+      controller: _nameController,
+      textAlign: TextAlign.center,
+      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+      decoration: const InputDecoration(
+        hintText: 'Enter your name',
+        border: InputBorder.none,
+      ),
     );
   }
 
@@ -146,20 +130,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextTheme textTheme,
     ColorScheme colorScheme,
   ) {
-    return Column(
-      children: [
-        Text(
-          userProvider.name,
-          style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          userProvider.email,
-          style: textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onBackground.withOpacity(0.7),
-          ),
-        ),
-      ],
+    return Text(
+      userProvider.name,
+      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
     );
   }
 
@@ -252,16 +225,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             (context) => const NotificationSettingsScreen(),
                       ),
                     );
-                  },
-                ),
-                const Divider(),
-                _buildSettingsItem(
-                  icon: Icons.help,
-                  title: 'Help & Support',
-                  subtitle: 'Get help using the app',
-                  colorScheme: colorScheme,
-                  onTap: () {
-                    // Navigate to help screen
                   },
                 ),
                 const Divider(),

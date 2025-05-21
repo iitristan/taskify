@@ -92,7 +92,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
         builder: (context, child) {
           return Theme(
-            data: Theme.of(context).copyWith(colorScheme: Theme.of(context).colorScheme),
+            data: Theme.of(
+              context,
+            ).copyWith(colorScheme: Theme.of(context).colorScheme),
             child: child!,
           );
         },
@@ -113,19 +115,20 @@ class _AddTodoScreenState extends State<AddTodoScreen>
               pickedTime.hour,
               pickedTime.minute,
             );
-            debugPrint('Date and time selected: ${_selectedDate.toString()}');
+            // Remove debug print but keep the functionality
           });
         }
       }
     } catch (e) {
-      debugPrint('Error selecting date: $e');
+      // Handle error silently
     }
   }
 
   Future<void> _selectRecurrenceEndDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _recurrenceEndDate ?? DateTime.now().add(const Duration(days: 30)),
+      initialDate:
+          _recurrenceEndDate ?? DateTime.now().add(const Duration(days: 30)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
     );
@@ -143,9 +146,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
     // Validate inputs
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a title')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter a title')));
       return;
     }
 
@@ -165,7 +168,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
     if (_isRecurring && _recurrenceEndDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an end date for recurrence')),
+        const SnackBar(
+          content: Text('Please select an end date for recurrence'),
+        ),
       );
       return;
     }
@@ -281,7 +286,10 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                       if (_isRecurring) ...[
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
@@ -299,18 +307,22 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                                   color: colorScheme.onSurface.withOpacity(0.7),
                                 ),
                               ),
-                              icon: Icon(Icons.arrow_drop_down, color: colorScheme.primary),
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: colorScheme.primary,
+                              ),
                               isExpanded: true,
                               dropdownColor: colorScheme.surface,
                               style: textTheme.bodyLarge?.copyWith(
                                 color: colorScheme.onSurface,
                               ),
-                              items: _recurrenceTypes.map((String value) {
-                                return DropdownMenuItem<String>(
-                                  value: value,
-                                  child: Text(value),
-                                );
-                              }).toList(),
+                              items:
+                                  _recurrenceTypes.map((String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(value),
+                                    );
+                                  }).toList(),
                               onChanged: (String? newValue) {
                                 setState(() {
                                   _recurrenceType = newValue;
@@ -321,7 +333,10 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: colorScheme.surface,
                             borderRadius: BorderRadius.circular(12),
@@ -337,15 +352,24 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                               children: [
                                 Text(
                                   _recurrenceEndDate != null
-                                      ? DateFormat('MMM d, y').format(_recurrenceEndDate!)
+                                      ? DateFormat(
+                                        'MMM d, y',
+                                      ).format(_recurrenceEndDate!)
                                       : 'Select End Date',
                                   style: textTheme.bodyLarge?.copyWith(
-                                    color: _recurrenceEndDate != null
-                                        ? colorScheme.onSurface
-                                        : colorScheme.onSurface.withOpacity(0.7),
+                                    color:
+                                        _recurrenceEndDate != null
+                                            ? colorScheme.onSurface
+                                            : colorScheme.onSurface.withOpacity(
+                                              0.7,
+                                            ),
                                   ),
                                 ),
-                                Icon(Icons.calendar_today, color: colorScheme.primary, size: 20),
+                                Icon(
+                                  Icons.calendar_today,
+                                  color: colorScheme.primary,
+                                  size: 20,
+                                ),
                               ],
                             ),
                           ),
@@ -544,7 +568,11 @@ class _AddTodoScreenState extends State<AddTodoScreen>
           children: [
             Row(
               children: [
-                Icon(Icons.calendar_today, color: colorScheme.primary, size: 20),
+                Icon(
+                  Icons.calendar_today,
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 16),
                 Text(
                   '${DateFormat('MMM d, y').format(_selectedDate)} at ${DateFormat('h:mm a').format(_selectedDate)}',

@@ -24,18 +24,19 @@ class _RemindersScreenState extends State<RemindersScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('Initializing RemindersScreen...');
-    // Initialize the database
-    Future.microtask(() {
-      debugPrint('Initializing reminder database from screen...');
-      context.read<ReminderProvider>().initDatabase();
-    });
+    _initReminders();
+  }
+
+  Future<void> _initReminders() async {
+    final reminderProvider = context.read<ReminderProvider>();
+    await reminderProvider.initDatabase();
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final reminderProvider = context.watch<ReminderProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -55,13 +56,10 @@ class _RemindersScreenState extends State<RemindersScreen> {
       ),
       body: Consumer<ReminderProvider>(
         builder: (context, reminderProvider, child) {
-          debugPrint('Building RemindersScreen with ${reminderProvider.reminders.length} reminders');
           final reminders = reminderProvider.reminders;
 
           if (!reminderProvider.isInitialized) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (reminders.isEmpty) {
