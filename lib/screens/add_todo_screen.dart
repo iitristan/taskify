@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/todo.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/auth_provider.dart';
 
 class AddTodoScreen extends StatefulWidget {
   final DateTime selectedDate;
@@ -33,7 +34,13 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   DateTime? _recurrenceEndDate;
 
   final List<String> _priorities = ['Low', 'Medium', 'High'];
-  final List<String> _recurrenceTypes = ['Daily', 'Weekly', 'Monthly'];
+  final List<String> _recurrenceTypes = ['daily', 'weekly', 'monthly'];
+
+  // Add mapping for display values
+  String _getDisplayRecurrenceType(String? type) {
+    if (type == null) return '';
+    return type[0].toUpperCase() + type.substring(1);
+  }
 
   @override
   void initState() {
@@ -85,16 +92,22 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
   Future<void> _selectDate(BuildContext context) async {
     try {
+      final defaultDate = DateTime.now();
+
       final DateTime? picked = await showDatePicker(
         context: context,
-        initialDate: _selectedDate,
+        initialDate: defaultDate,
         firstDate: DateTime.now().subtract(const Duration(days: 365)),
         lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
         builder: (context, child) {
           return Theme(
-            data: Theme.of(
-              context,
-            ).copyWith(colorScheme: Theme.of(context).colorScheme),
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme,
+              // Reset the calendar's internal state
+              datePickerTheme: DatePickerThemeData(
+                surfaceTintColor: Colors.transparent,
+              ),
+            ),
             child: child!,
           );
         },
@@ -115,7 +128,6 @@ class _AddTodoScreenState extends State<AddTodoScreen>
               pickedTime.hour,
               pickedTime.minute,
             );
-            // Remove debug print but keep the functionality
           });
         }
       }
@@ -125,12 +137,26 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   }
 
   Future<void> _selectRecurrenceEndDate(BuildContext context) async {
+    // Force a default date 30 days from now to avoid the June 20 issue
+    final defaultDate = DateTime.now().add(const Duration(days: 30));
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate:
-          _recurrenceEndDate ?? DateTime.now().add(const Duration(days: 30)),
+      initialDate: defaultDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme,
+            // Reset the calendar's internal state
+            datePickerTheme: DatePickerThemeData(
+              surfaceTintColor: Colors.transparent,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -178,6 +204,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
     if (_isEditing && widget.todo != null) {
       final updatedTodo = Todo(
         id: widget.todo!.id,
+        userId: context.read<AuthProvider>().user!.id,
         title: title,
         description: description,
         dueDate: _selectedDate,
@@ -186,12 +213,13 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         categoryName: _selectedCategoryName,
         isCompleted: widget.todo!.isCompleted,
         isRecurring: _isRecurring,
-        recurrenceType: _recurrenceType?.toLowerCase(),
+        recurrenceType: _recurrenceType,
         recurrenceEndDate: _recurrenceEndDate,
       );
       context.read<TodoProvider>().updateTodo(updatedTodo);
     } else {
       final todo = Todo(
+        userId: context.read<AuthProvider>().user!.id,
         title: title,
         description: description,
         dueDate: _selectedDate,
@@ -199,7 +227,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         categoryId: _selectedCategoryId,
         categoryName: _selectedCategoryName,
         isRecurring: _isRecurring,
-        recurrenceType: _recurrenceType?.toLowerCase(),
+        recurrenceType: _recurrenceType,
         recurrenceEndDate: _recurrenceEndDate,
       );
       context.read<TodoProvider>().addTodo(todo);
@@ -320,7 +348,9 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                                   _recurrenceTypes.map((String value) {
                                     return DropdownMenuItem<String>(
                                       value: value,
-                                      child: Text(value),
+                                      child: Text(
+                                        _getDisplayRecurrenceType(value),
+                                      ),
                                     );
                                   }).toList(),
                               onChanged: (String? newValue) {

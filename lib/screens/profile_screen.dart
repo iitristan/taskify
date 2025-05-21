@@ -16,6 +16,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
   bool _isEditing = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -34,17 +35,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  void _toggleEditMode() {
+  Future<void> _toggleEditMode() async {
     if (_isEditing) {
-      // Save user data to provider
-      Provider.of<UserProvider>(
-        context,
-        listen: false,
-      ).updateUserData(name: _nameController.text.trim());
+      // Set saving state
+      setState(() {
+        _isSaving = true;
+      });
+
+      try {
+        // Save user data to provider
+        await Provider.of<UserProvider>(
+          context,
+          listen: false,
+        ).updateUserData(name: _nameController.text.trim());
+
+        // Show success feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        // Show error feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update profile: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        // Reset states
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+            _isEditing = false;
+          });
+        }
+      }
+    } else {
+      // Just enter edit mode
+      setState(() {
+        _isEditing = true;
+      });
     }
-    setState(() {
-      _isEditing = !_isEditing;
-    });
   }
 
   @override
@@ -83,10 +123,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
       ),
       actions: [
-        IconButton(
-          icon: Icon(_isEditing ? Icons.save : Icons.edit),
-          onPressed: _toggleEditMode,
-        ),
+        _isSaving
+            ? Container(
+              margin: const EdgeInsets.all(8),
+              width: 40,
+              child: const Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+            : IconButton(
+              icon: Icon(_isEditing ? Icons.save : Icons.edit),
+              onPressed: _toggleEditMode,
+            ),
       ],
     );
   }
@@ -114,13 +169,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditableUserInfo(TextTheme textTheme) {
-    return TextField(
-      controller: _nameController,
-      textAlign: TextAlign.center,
-      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-      decoration: const InputDecoration(
-        hintText: 'Enter your name',
-        border: InputBorder.none,
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.transparent : colorScheme.surface,
+        border: Border.all(
+          color: colorScheme.primary.withOpacity(0.7),
+          width: 2,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow:
+            isDarkMode
+                ? null
+                : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    spreadRadius: 1,
+                  ),
+                ],
+      ),
+      child: TextField(
+        controller: _nameController,
+        textAlign: TextAlign.center,
+        style: textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: isDarkMode ? Colors.white : colorScheme.onSurface,
+        ),
+        cursorColor: colorScheme.primary,
+        decoration: InputDecoration(
+          hintText: 'Enter your name',
+          hintStyle: TextStyle(
+            color: (isDarkMode ? Colors.white : colorScheme.onSurface)
+                .withOpacity(0.5),
+            fontSize: 20,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.zero,
+        ),
       ),
     );
   }
@@ -130,9 +220,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextTheme textTheme,
     ColorScheme colorScheme,
   ) {
-    return Text(
-      userProvider.name,
-      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        userProvider.name,
+        style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
     );
   }
 

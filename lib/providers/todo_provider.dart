@@ -2,17 +2,45 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/todo.dart';
+import 'auth_provider.dart';
+import 'reminder_provider.dart';
 
 class TodoProvider with ChangeNotifier {
-  List<Todo> _todos = [];
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthProvider _authProvider;
+  List<Todo> _todos = [];
   bool _isInitialized = false;
+
+  TodoProvider(this._authProvider) {
+    if (_authProvider.isAuthenticated) {
+      initDatabase();
+    }
+
+    // Listen to auth changes
+    _authProvider.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (_authProvider.isAuthenticated) {
+      initDatabase();
+    } else {
+      _todos = [];
+      _isInitialized = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthChanged);
+    super.dispose();
+  }
 
   List<Todo> get todos => _todos;
   bool get isInitialized => _isInitialized;
 
   Future<void> initDatabase() async {
-    if (_isInitialized) return;
+    if (_isInitialized || !_authProvider.isAuthenticated) return;
 
     try {
       await loadTodos();
@@ -24,8 +52,15 @@ class TodoProvider with ChangeNotifier {
   }
 
   Future<void> loadTodos() async {
+    if (!_authProvider.isAuthenticated) return;
+
     try {
-      final QuerySnapshot snapshot = await _firestore.collection('todos').get();
+      final QuerySnapshot snapshot =
+          await _firestore
+              .collection('todos')
+              .where('userId', isEqualTo: _authProvider.user!.id)
+              .get();
+
       _todos = snapshot.docs.map((doc) => Todo.fromFirestore(doc)).toList();
       notifyListeners();
     } catch (e) {
@@ -34,6 +69,8 @@ class TodoProvider with ChangeNotifier {
   }
 
   Future<void> addTodo(Todo todo) async {
+    if (!_authProvider.isAuthenticated) return;
+
     try {
       final docRef = await _firestore.collection('todos').add(todo.toMap());
       final newTodo = todo.copyWith(id: docRef.id);
@@ -45,6 +82,8 @@ class TodoProvider with ChangeNotifier {
   }
 
   Future<void> updateTodo(Todo todo) async {
+    if (!_authProvider.isAuthenticated) return;
+
     try {
       await _firestore.collection('todos').doc(todo.id).update(todo.toMap());
 
@@ -59,6 +98,8 @@ class TodoProvider with ChangeNotifier {
   }
 
   Future<void> deleteTodo(String id) async {
+    if (!_authProvider.isAuthenticated) return;
+
     try {
       await _firestore.collection('todos').doc(id).delete();
       _todos.removeWhere((todo) => todo.id == id);
@@ -81,8 +122,11 @@ class TodoProvider with ChangeNotifier {
         if (todo.isRecurring &&
             todo.recurrenceType != null &&
             todo.recurrenceEndDate != null) {
-          // Check if the date is within the recurrence period
-          if (date.isBefore(todo.recurrenceEndDate!)) {
+          // Check if the date is within the recurrence period (after or equal to start date and before or equal to end date)
+          if (date.isAfter(todo.dueDate.subtract(const Duration(days: 1))) &&
+              date.isBefore(
+                todo.recurrenceEndDate!.add(const Duration(days: 1)),
+              )) {
             switch (todo.recurrenceType) {
               case 'daily':
                 return true;
@@ -114,6 +158,14 @@ class TodoProvider with ChangeNotifier {
   List<Todo> getTodosByCategory(String categoryId) {
     try {
       return _todos.where((todo) => todo.categoryId == categoryId).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  List<Todo> getTodosByStatus(String status) {
+    try {
+      return _todos.where((todo) => todo.status == status).toList();
     } catch (e) {
       return [];
     }

@@ -37,20 +37,20 @@ class ThemeProvider with ChangeNotifier {
   }
 
   // Dark theme colors
-  static const _darkPrimaryColor = Color(0xFF7C4DFF);
-  static const _darkSecondaryColor = Color(0xFF00E5FF);
-  static const _darkTertiaryColor = Color(0xFFFFD54F);
+  static const _darkPrimaryColor = Color(0xFF5C3DB2);
+  static const _darkSecondaryColor = Color(0xFF00B8CC);
+  static const _darkTertiaryColor = Color(0xFFD9B846);
   static const _darkBackgroundColor = Color(0xFF121212);
   static const _darkSurfaceColor = Color(0xFF1F1F1F);
-  static const _darkErrorColor = Color(0xFFFF5252);
+  static const _darkErrorColor = Color(0xFFE04646);
 
   // Light theme colors
-  static const _lightPrimaryColor = Color(0xFF6200EE);
-  static const _lightSecondaryColor = Color(0xFF03DAC6);
-  static const _lightTertiaryColor = Color(0xFFFFB400);
-  static const _lightBackgroundColor = Color(0xFFF5F5F5);
+  static const _lightPrimaryColor = Color(0xFF4A3387);
+  static const _lightSecondaryColor = Color(0xFF00A99E);
+  static const _lightTertiaryColor = Color(0xFFD99700);
+  static const _lightBackgroundColor = Color(0xFFF8F9FA);
   static const _lightSurfaceColor = Colors.white;
-  static const _lightErrorColor = Color(0xFFB00020);
+  static const _lightErrorColor = Color(0xFF9C0018);
 
   // Dark theme configuration
   ThemeData _getDarkTheme() {
@@ -75,6 +75,13 @@ class ThemeProvider with ChangeNotifier {
       floatingActionButtonTheme: _buildDarkFabTheme(),
       inputDecorationTheme: _buildDarkInputTheme(),
       elevatedButtonTheme: _buildDarkButtonTheme(),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: _darkSurfaceColor,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: _darkPrimaryColor,
+        dayStyle: const TextStyle(color: Colors.white),
+        todayBorder: BorderSide(color: _darkPrimaryColor, width: 1),
+      ),
     );
   }
 
@@ -101,6 +108,13 @@ class ThemeProvider with ChangeNotifier {
       floatingActionButtonTheme: _buildLightFabTheme(),
       inputDecorationTheme: _buildLightInputTheme(),
       elevatedButtonTheme: _buildLightButtonTheme(),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: _lightSurfaceColor,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: _lightPrimaryColor,
+        headerForegroundColor: Colors.white,
+        todayBorder: BorderSide(color: _lightPrimaryColor, width: 1),
+      ),
     );
   }
 
@@ -142,6 +156,12 @@ class ThemeProvider with ChangeNotifier {
     return InputDecorationTheme(
       filled: true,
       fillColor: const Color(0xFF2C2C2C),
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      floatingLabelStyle: TextStyle(
+        color: _darkPrimaryColor.withOpacity(0.9),
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
@@ -154,7 +174,22 @@ class ThemeProvider with ChangeNotifier {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: _darkPrimaryColor, width: 2),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Color(0xFFE0A2A2), width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Color(0xFFE0A2A2), width: 1.5),
+      ),
+      errorStyle: TextStyle(
+        color: Color(0xFFE0A2A2),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 0.8,
+      ),
       labelStyle: const TextStyle(color: Colors.white70),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
     );
   }
 
@@ -209,6 +244,12 @@ class ThemeProvider with ChangeNotifier {
     return InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      floatingLabelStyle: TextStyle(
+        color: _lightPrimaryColor,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.grey),
@@ -221,7 +262,25 @@ class ThemeProvider with ChangeNotifier {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: _lightPrimaryColor, width: 2),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: _lightErrorColor.withOpacity(0.8),
+          width: 1,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: _lightErrorColor, width: 1.5),
+      ),
+      errorStyle: TextStyle(
+        color: _lightErrorColor.withOpacity(0.9),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 0.8,
+      ),
       labelStyle: const TextStyle(color: Colors.black54),
+      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
     );
   }
 

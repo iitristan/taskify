@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../main.dart';
+import '../providers/auth_provider.dart';
 
 class ReminderProvider with foundation.ChangeNotifier {
   List<Reminder> _reminders = [];
@@ -104,7 +105,16 @@ class ReminderProvider with foundation.ChangeNotifier {
         final todo = todoProvider.todos.firstWhere(
           (todo) => todo.id == todoId,
           orElse:
-              () => Todo(title: '', description: '', dueDate: DateTime.now()),
+              () => Todo(
+                userId:
+                    Provider.of<AuthProvider>(
+                      navigatorKey.currentContext!,
+                      listen: false,
+                    ).user!.id,
+                title: '',
+                description: '',
+                dueDate: DateTime.now(),
+              ),
         );
         if (todo.id != null) {
           await todoProvider.updateTodo(todo.copyWith(isCompleted: true));
@@ -344,6 +354,7 @@ class ReminderProvider with foundation.ChangeNotifier {
           interval,
           notificationDetails,
           payload: payload,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
       } else {
         await flutterLocalNotificationsPlugin.zonedSchedule(
@@ -352,10 +363,8 @@ class ReminderProvider with foundation.ChangeNotifier {
           'You have a task to complete',
           scheduledDate,
           notificationDetails,
-          androidAllowWhileIdle: true,
-          uiLocalNotificationDateInterpretation:
-              UILocalNotificationDateInterpretation.absoluteTime,
           payload: payload,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
       }
     } catch (e) {

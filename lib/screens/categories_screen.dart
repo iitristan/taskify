@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/category_provider.dart';
 import '../models/category.dart';
 import '../providers/todo_provider.dart';
+import '../providers/auth_provider.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -82,70 +83,72 @@ class _CategoriesScreenState extends State<CategoriesScreen>
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Category'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Category Name',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a category name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add Category'),
+            content: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(_selectedIcon, color: _selectedColor),
-                    onPressed: _showIconPicker,
-                  ),
-                  IconButton(
-                    icon: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: _selectedColor,
-                        shape: BoxShape.circle,
-                      ),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Category Name',
                     ),
-                    onPressed: _showColorPicker,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a category name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(_selectedIcon, color: _selectedColor),
+                        onPressed: _showIconPicker,
+                      ),
+                      IconButton(
+                        icon: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: _selectedColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        onPressed: _showColorPicker,
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    final category = Category(
+                      userId: context.read<AuthProvider>().user!.id,
+                      name: _nameController.text,
+                      color: _selectedColor,
+                      icon: _selectedIcon,
+                    );
+                    context.read<CategoryProvider>().addCategory(category);
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Add'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                final category = Category(
-                  name: _nameController.text,
-                  color: _selectedColor,
-                  icon: _selectedIcon,
-                );
-                context.read<CategoryProvider>().addCategory(category);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -156,145 +159,151 @@ class _CategoriesScreenState extends State<CategoriesScreen>
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Category'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Category Name',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a category name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Edit Category'),
+            content: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: Icon(_selectedIcon, color: _selectedColor),
-                    onPressed: _showIconPicker,
-                  ),
-                  IconButton(
-                    icon: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: _selectedColor,
-                        shape: BoxShape.circle,
-                      ),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Category Name',
                     ),
-                    onPressed: _showColorPicker,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a category name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: Icon(_selectedIcon, color: _selectedColor),
+                        onPressed: _showIconPicker,
+                      ),
+                      IconButton(
+                        icon: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: _selectedColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        onPressed: _showColorPicker,
+                      ),
+                    ],
                   ),
                 ],
               ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    final updatedCategory = category.copyWith(
+                      name: _nameController.text,
+                      color: _selectedColor,
+                      icon: _selectedIcon,
+                    );
+                    context.read<CategoryProvider>().updateCategory(
+                      updatedCategory,
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Update'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                final updatedCategory = category.copyWith(
-                  name: _nameController.text,
-                  color: _selectedColor,
-                  icon: _selectedIcon,
-                );
-                context.read<CategoryProvider>().updateCategory(updatedCategory);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
     );
   }
 
   void _showIconPicker() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Icon'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: GridView.builder(
-            shrinkWrap: true,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemCount: _availableIcons.length,
-            itemBuilder: (context, index) {
-              return IconButton(
-                icon: Icon(_availableIcons[index], color: _selectedColor),
-                onPressed: () {
-                  setState(() {
-                    _selectedIcon = _availableIcons[index];
-                  });
-                  Navigator.pop(context);
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Select Icon'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                ),
+                itemCount: _availableIcons.length,
+                itemBuilder: (context, index) {
+                  return IconButton(
+                    icon: Icon(_availableIcons[index], color: _selectedColor),
+                    onPressed: () {
+                      setState(() {
+                        _selectedIcon = _availableIcons[index];
+                      });
+                      Navigator.pop(context);
+                    },
+                  );
                 },
-              );
-            },
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
   void _showColorPicker() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Color'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: GridView.builder(
-            shrinkWrap: true,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemCount: _availableColors.length,
-            itemBuilder: (context, index) {
-              return InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedColor = _availableColors[index];
-                  });
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _availableColors[index],
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _selectedColor == _availableColors[index]
-                          ? Colors.white
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Select Color'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
                 ),
-              );
-            },
+                itemCount: _availableColors.length,
+                itemBuilder: (context, index) {
+                  return InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedColor = _availableColors[index];
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _availableColors[index],
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              _selectedColor == _availableColors[index]
+                                  ? Colors.white
+                                  : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -370,7 +379,9 @@ class _CategoriesScreenState extends State<CategoriesScreen>
                   itemBuilder: (context, index) {
                     final category = categories[index];
                     final todoCount =
-                        todoProvider.getTodosByCategory(category.id.toString()).length;
+                        todoProvider
+                            .getTodosByCategory(category.id.toString())
+                            .length;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),

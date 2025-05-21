@@ -363,11 +363,25 @@ class _RemindersScreenState extends State<RemindersScreen> {
   }
 
   Future<void> _selectDateTime(BuildContext context) async {
+    final defaultDate = DateTime.now();
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDateTime,
+      initialDate: defaultDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme,
+            // Reset the calendar's internal state
+            datePickerTheme: DatePickerThemeData(
+              surfaceTintColor: Colors.transparent,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (pickedDate != null) {
