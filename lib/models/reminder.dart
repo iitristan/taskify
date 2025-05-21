@@ -6,6 +6,7 @@ class Reminder {
   final DateTime reminderTime;
   final bool isRepeating;
   final String repeatType; // daily, weekly, monthly
+  final bool notificationsEnabled;
 
   Reminder({
     this.id,
@@ -13,6 +14,7 @@ class Reminder {
     required this.reminderTime,
     this.isRepeating = false,
     this.repeatType = 'none',
+    this.notificationsEnabled = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -21,6 +23,7 @@ class Reminder {
       'reminderTime': Timestamp.fromDate(reminderTime),
       'isRepeating': isRepeating,
       'repeatType': repeatType,
+      'notificationsEnabled': notificationsEnabled,
     };
   }
 
@@ -31,6 +34,7 @@ class Reminder {
       reminderTime: (map['reminderTime'] as Timestamp).toDate(),
       isRepeating: map['isRepeating'] ?? false,
       repeatType: map['repeatType'] ?? 'none',
+      notificationsEnabled: map['notificationsEnabled'] ?? true,
     );
   }
 
@@ -40,6 +44,7 @@ class Reminder {
     DateTime? reminderTime,
     bool? isRepeating,
     String? repeatType,
+    bool? notificationsEnabled,
   }) {
     return Reminder(
       id: id ?? this.id,
@@ -47,6 +52,7 @@ class Reminder {
       reminderTime: reminderTime ?? this.reminderTime,
       isRepeating: isRepeating ?? this.isRepeating,
       repeatType: repeatType ?? this.repeatType,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 }

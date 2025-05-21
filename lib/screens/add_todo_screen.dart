@@ -5,6 +5,8 @@ import '../models/todo.dart';
 import '../providers/todo_provider.dart';
 import '../providers/category_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/reminder_provider.dart';
+import '../models/reminder.dart';
 
 class AddTodoScreen extends StatefulWidget {
   final DateTime selectedDate;
@@ -32,6 +34,8 @@ class _AddTodoScreenState extends State<AddTodoScreen>
   bool _isRecurring = false;
   String? _recurrenceType;
   DateTime? _recurrenceEndDate;
+  bool _addReminder = false;
+  DateTime? _reminderDateTime;
 
   final List<String> _priorities = ['Low', 'Medium', 'High'];
   final List<String> _recurrenceTypes = ['daily', 'weekly', 'monthly'];
@@ -48,6 +52,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
     _selectedDate = widget.selectedDate;
     _priority = 'Medium';
     _isEditing = widget.todo != null;
+    _reminderDateTime = _selectedDate;
 
     _initializeFormData();
     _setupAnimation();
@@ -92,18 +97,19 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
   Future<void> _selectDate(BuildContext context) async {
     try {
-      final defaultDate = DateTime.now();
+      final now = DateTime.now();
+      final defaultDate = now;
+      final oldDueDate = _selectedDate;
 
       final DateTime? picked = await showDatePicker(
         context: context,
         initialDate: defaultDate,
-        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+        firstDate: now,
         lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: Theme.of(context).colorScheme,
-              // Reset the calendar's internal state
               datePickerTheme: DatePickerThemeData(
                 surfaceTintColor: Colors.transparent,
               ),
@@ -116,18 +122,29 @@ class _AddTodoScreenState extends State<AddTodoScreen>
       if (picked != null) {
         final TimeOfDay? pickedTime = await showTimePicker(
           context: context,
-          initialTime: TimeOfDay.fromDateTime(_selectedDate),
+          initialTime: TimeOfDay.fromDateTime(_selectedDate.isAfter(now) ? _selectedDate : now),
         );
 
         if (pickedTime != null) {
-          setState(() {
-            _selectedDate = DateTime(
-              picked.year,
-              picked.month,
-              picked.day,
-              pickedTime.hour,
-              pickedTime.minute,
+          final selectedDateTime = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+          if (selectedDateTime.isBefore(now)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Due date/time cannot be in the past.')),
             );
+            return;
+          }
+          setState(() {
+            _selectedDate = selectedDateTime;
+            // If reminder is enabled and reminder date matched old due date, update reminder date to new due date
+            if (_addReminder && (_reminderDateTime == null || _reminderDateTime == oldDueDate)) {
+              _reminderDateTime = selectedDateTime;
+            }
           });
         }
       }
@@ -166,15 +183,15 @@ class _AddTodoScreenState extends State<AddTodoScreen>
     }
   }
 
-  void _saveTodo() {
+  void _saveTodo() async {
     final title = _titleController.text.trim();
     final description = _descriptionController.text.trim();
 
     // Validate inputs
     if (title.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter a title')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title')),
+      );
       return;
     }
 
@@ -194,9 +211,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
 
     if (_isRecurring && _recurrenceEndDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select an end date for recurrence'),
-        ),
+        const SnackBar(content: Text('Please select an end date for recurrence')),
       );
       return;
     }
@@ -216,7 +231,7 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         recurrenceType: _recurrenceType,
         recurrenceEndDate: _recurrenceEndDate,
       );
-      context.read<TodoProvider>().updateTodo(updatedTodo);
+      await context.read<TodoProvider>().updateTodo(updatedTodo);
     } else {
       final todo = Todo(
         userId: context.read<AuthProvider>().user!.id,
@@ -230,9 +245,26 @@ class _AddTodoScreenState extends State<AddTodoScreen>
         recurrenceType: _recurrenceType,
         recurrenceEndDate: _recurrenceEndDate,
       );
-      context.read<TodoProvider>().addTodo(todo);
+      
+      // Add the todo first
+      final todoProvider = context.read<TodoProvider>();
+      final newTodo = await todoProvider.addTodo(todo);
+      
+      if (newTodo != null && _addReminder && _reminderDateTime != null) {
+        final reminderProvider = context.read<ReminderProvider>();
+        await reminderProvider.addReminder(
+          Reminder(
+            todoId: newTodo.id!,
+            reminderTime: _reminderDateTime!,
+            isRepeating: false,
+            repeatType: 'none',
+          ),
+        );
+      }
     }
-    Navigator.pop(context);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -405,6 +437,64 @@ class _AddTodoScreenState extends State<AddTodoScreen>
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                ),
+
+                _buildFormField(
+                  title: 'Reminder',
+                  textTheme: textTheme,
+                  colorScheme: colorScheme,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SwitchListTile(
+                        title: Text('Add Reminder', style: textTheme.bodyLarge?.copyWith(color: colorScheme.onSurface)),
+                        value: _addReminder,
+                        onChanged: (value) {
+                          setState(() {
+                            _addReminder = value;
+                            if (value && _reminderDateTime == null) {
+                              _reminderDateTime = _selectedDate;
+                            }
+                          });
+                        },
+                        activeColor: colorScheme.primary,
+                      ),
+                      if (_addReminder)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('Reminder Date & Time'),
+                          subtitle: Text(
+                            DateFormat('EEE, MMM d, yyyy - h:mm a').format(_reminderDateTime ?? _selectedDate),
+                          ),
+                          trailing: Icon(Icons.calendar_today),
+                          onTap: () async {
+                            final pickedDate = await showDatePicker(
+                              context: context,
+                              initialDate: _reminderDateTime ?? _selectedDate,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime.now().add(Duration(days: 365)),
+                            );
+                            if (pickedDate != null) {
+                              final pickedTime = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(_reminderDateTime ?? _selectedDate),
+                              );
+                              if (pickedTime != null) {
+                                setState(() {
+                                  _reminderDateTime = DateTime(
+                                    pickedDate.year,
+                                    pickedDate.month,
+                                    pickedDate.day,
+                                    pickedTime.hour,
+                                    pickedTime.minute,
+                                  );
+                                });
+                              }
+                            }
+                          },
+                        ),
                     ],
                   ),
                 ),

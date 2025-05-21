@@ -303,6 +303,23 @@ class _CalendarScreenState extends State<CalendarScreen>
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
+                                if (!todo.isCompleted && todo.dueDate.isBefore(DateTime.now())) ...[
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Overdue',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],

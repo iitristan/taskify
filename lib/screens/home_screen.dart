@@ -126,6 +126,8 @@ class _HomeScreenState extends State<HomeScreen>
                   _buildMyDaySection(today, textTheme, colorScheme),
                   const SizedBox(height: 24),
                   _buildStatsCard(colorScheme, textTheme),
+                  const SizedBox(height: 24),
+                  _buildWeeklyPendingTasksCard(colorScheme, textTheme),
                 ],
               ),
             ),
@@ -401,7 +403,80 @@ class _HomeScreenState extends State<HomeScreen>
                       )
                       : filteredTasks.map((todo) {
                         Color priorityColor = _getPriorityColor(todo.priority);
-                        return _buildTaskTile(todo, priorityColor);
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Checkbox(
+                            value: todo.isCompleted,
+                            onChanged: (bool? value) {
+                              final updatedTodo = todo.copyWith(
+                                isCompleted: value ?? false,
+                              );
+                              context.read<TodoProvider>().updateTodo(updatedTodo);
+                            },
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            side: BorderSide(color: priorityColor, width: 1.5),
+                            activeColor: priorityColor,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          title: Text(
+                            todo.title,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontSize: 15,
+                              height: 1.3,
+                              color: todo.isCompleted
+                                  ? colorScheme.onSurface.withOpacity(0.3)
+                                  : colorScheme.onSurface,
+                              decoration: todo.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Text(
+                                DateFormat('h:mm a').format(todo.dueDate),
+                                style: textTheme.bodySmall?.copyWith(
+                                  fontSize: 12,
+                                  color: colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                              ),
+                              if (!todo.isCompleted && todo.dueDate.isBefore(DateTime.now())) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Overdue',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          trailing: SizedBox(
+                            width: 32,
+                            height: double.infinity,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.more_vert,
+                                color: colorScheme.onSurface.withOpacity(0.3),
+                                size: 18,
+                              ),
+                              onPressed: () => _showTaskMenu(todo, priorityColor),
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                              alignment: Alignment.centerRight,
+                            ),
+                          ),
+                        );
                       }).toList(),
             ),
           ),
@@ -673,6 +748,89 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ],
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWeeklyPendingTasksCard(ColorScheme colorScheme, TextTheme textTheme) {
+    return Consumer<TodoProvider>(
+      builder: (context, todoProvider, child) {
+        final pendingTasks = todoProvider.todos.where((todo) => !todo.isCompleted).toList();
+
+        return Card(
+          elevation: 6,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.pending_actions, color: colorScheme.primary, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Pending Tasks',
+                      style: textTheme.titleMedium?.copyWith(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (pendingTasks.isEmpty)
+                  Text(
+                    'No pending tasks! 🎉',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  )
+                else
+                  Column(
+                    children: pendingTasks.map((todo) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.circle, size: 12, color: colorScheme.primary),
+                      title: Text(
+                        todo.title,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Row(
+                        children: [
+                          Text(
+                            DateFormat('EEE, MMM d').format(todo.dueDate),
+                            style: textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          if (todo.dueDate.isBefore(DateTime.now())) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Overdue',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+              ],
             ),
           ),
         );

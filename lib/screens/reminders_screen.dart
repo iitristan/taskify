@@ -74,7 +74,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.notifications,
+                      Icons.notifications_off,
                       size: 60,
                       color: colorScheme.primary.withOpacity(0.7),
                     ),
@@ -89,7 +89,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tap + to add a new reminder',
+                    'You haven\'t set any reminders yet.\nCreate a task first to set reminders.',
+                    textAlign: TextAlign.center,
                     style: textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onBackground.withOpacity(0.7),
                     ),
@@ -159,38 +160,50 @@ class _RemindersScreenState extends State<RemindersScreen> {
                             ),
                         ],
                       ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: colorScheme.error),
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder:
-                                (context) => AlertDialog(
-                                  title: const Text('Delete Reminder'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this reminder?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        reminderProvider.deleteReminder(
-                                          reminder.id!,
-                                        );
-                                        Navigator.pop(context);
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: colorScheme.error,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: reminder.notificationsEnabled,
+                            onChanged: (value) async {
+                              await reminderProvider.toggleReminderNotification(reminder, value);
+                            },
+                            activeColor: colorScheme.primary,
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete, color: colorScheme.error),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => AlertDialog(
+                                      title: const Text('Delete Reminder'),
+                                      content: const Text(
+                                        'Are you sure you want to delete this reminder?',
                                       ),
-                                      child: const Text('Delete'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            reminderProvider.deleteReminder(
+                                              reminder.id!,
+                                            );
+                                            Navigator.pop(context);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: colorScheme.error,
+                                          ),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                          );
-                        },
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   );

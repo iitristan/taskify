@@ -68,16 +68,18 @@ class TodoProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addTodo(Todo todo) async {
-    if (!_authProvider.isAuthenticated) return;
+  Future<Todo?> addTodo(Todo todo) async {
+    if (!_authProvider.isAuthenticated) return null;
 
     try {
       final docRef = await _firestore.collection('todos').add(todo.toMap());
       final newTodo = todo.copyWith(id: docRef.id);
       _todos.add(newTodo);
       notifyListeners();
+      return newTodo;
     } catch (e) {
       // Handle error silently
+      return null;
     }
   }
 

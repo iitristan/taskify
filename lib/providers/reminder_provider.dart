@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../main.dart';
 import '../providers/auth_provider.dart';
+import 'package:flutter/services.dart';
 
 class ReminderProvider with foundation.ChangeNotifier {
   List<Reminder> _reminders = [];
@@ -32,58 +33,91 @@ class ReminderProvider with foundation.ChangeNotifier {
   bool get isInitialized => _isInitialized;
 
   Future<void> initPlugin() async {
-    // Initialize timezone
-    tz_data.initializeTimeZones();
+    if (_isInitialized) return;
 
-    // Load notification settings
-    await _loadNotificationSettings();
+    try {
+      // Initialize timezone
+      tz_data.initializeTimeZones();
 
-    // Configure notification settings
-    final AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+      // Request notification permissions for Android 13+
+      if (foundation.defaultTargetPlatform == foundation.TargetPlatform.android) {
+        try {
+          const platform = MethodChannel('com.example.todolist/notifications');
+          final bool? result = await platform.invokeMethod('requestNotificationPermission');
+          if (result == false) {
+            _notificationsEnabled = false;
+            await _saveNotificationSettings();
+          }
 
-    final DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
-          notificationCategories: [
-            DarwinNotificationCategory(
-              'taskify_reminders',
-              actions: [
-                DarwinNotificationAction.plain(
-                  'MARK_AS_DONE',
-                  'Mark as Done',
-                  options: {DarwinNotificationActionOption.foreground},
-                ),
-                DarwinNotificationAction.plain(
-                  'SNOOZE',
-                  'Snooze',
-                  options: {DarwinNotificationActionOption.foreground},
-                ),
-              ],
-            ),
-          ],
-        );
+          // Listen for boot completed event
+          platform.setMethodCallHandler((call) async {
+            if (call.method == 'onBootCompleted') {
+              await _rescheduleAllNotifications();
+            }
+            return null;
+          });
+        } catch (e) {
+          print('Error requesting notification permission: $e');
+        }
+      }
 
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-          android: initializationSettingsAndroid,
-          iOS: initializationSettingsIOS,
-        );
+      // Load notification settings
+      await _loadNotificationSettings();
 
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: _handleNotificationResponse,
-    );
+      // Configure notification settings
+      final AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // Request permissions on iOS
-    if (!foundation.kIsWeb) {
-      await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin
-          >()
-          ?.requestPermissions(alert: true, badge: true, sound: true);
+      final DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+            notificationCategories: [
+              DarwinNotificationCategory(
+                'taskify_reminders',
+                actions: [
+                  DarwinNotificationAction.plain(
+                    'MARK_AS_DONE',
+                    'Mark as Done',
+                    options: {DarwinNotificationActionOption.foreground},
+                  ),
+                  DarwinNotificationAction.plain(
+                    'SNOOZE',
+                    'Snooze',
+                    options: {DarwinNotificationActionOption.foreground},
+                  ),
+                ],
+              ),
+            ],
+          );
+
+      final InitializationSettings initializationSettings =
+          InitializationSettings(
+            android: initializationSettingsAndroid,
+            iOS: initializationSettingsIOS,
+          );
+
+      await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+      );
+
+      // Request permissions on iOS
+      if (!foundation.kIsWeb) {
+        await flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+      }
+
+      _isInitialized = true;
+      notifyListeners();
+    } catch (e) {
+      print('Error initializing notifications: $e');
+      _isInitialized = true;
+      notifyListeners();
     }
   }
 
@@ -148,6 +182,11 @@ class ReminderProvider with foundation.ChangeNotifier {
     _vibrationEnabled = prefs.getBool('notification_vibration_enabled') ?? true;
     _selectedSound = prefs.getString('notification_sound') ?? 'default';
     _reminderLeadTime = prefs.getInt('reminder_lead_time') ?? 15;
+  }
+
+  Future<void> _saveNotificationSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', _notificationsEnabled);
   }
 
   Future<void> updateNotificationSettings({
@@ -279,19 +318,20 @@ class ReminderProvider with foundation.ChangeNotifier {
   }
 
   Future<void> scheduleNotification(Reminder reminder) async {
-    if (reminder.id == null || !_notificationsEnabled) return;
+    if (reminder.id == null || !_notificationsEnabled || !reminder.notificationsEnabled) return;
 
     try {
+      print('Scheduling notification for reminder: ${reminder.id}');
+      print('Reminder time: ${reminder.reminderTime}');
+      print('Lead time: $_reminderLeadTime minutes');
+
       final androidDetails = AndroidNotificationDetails(
         'taskify_reminders',
         'Task Reminders',
         channelDescription: 'Notifications for task reminders',
         importance: Importance.max,
         priority: Priority.high,
-        sound:
-            _soundEnabled
-                ? RawResourceAndroidNotificationSound(_selectedSound)
-                : null,
+        sound: _soundEnabled ? RawResourceAndroidNotificationSound(_selectedSound) : null,
         enableVibration: _vibrationEnabled,
         styleInformation: BigTextStyleInformation(''),
         category: AndroidNotificationCategory.reminder,
@@ -299,6 +339,8 @@ class ReminderProvider with foundation.ChangeNotifier {
           const AndroidNotificationAction('MARK_AS_DONE', 'Mark as Done'),
           const AndroidNotificationAction('SNOOZE', 'Snooze'),
         ],
+        fullScreenIntent: true,
+        visibility: NotificationVisibility.public,
       );
 
       final iosDetails = DarwinNotificationDetails(
@@ -328,8 +370,10 @@ class ReminderProvider with foundation.ChangeNotifier {
 
       // Generate a unique integer ID from the string ID
       final notificationId = reminder.id!.hashCode.abs();
+      print('Notification ID: $notificationId');
 
       if (reminder.isRepeating) {
+        print('Scheduling repeating notification');
         // Handle repeating notifications based on repeatType
         RepeatInterval interval;
         switch (reminder.repeatType) {
@@ -340,8 +384,7 @@ class ReminderProvider with foundation.ChangeNotifier {
             interval = RepeatInterval.weekly;
             break;
           case 'monthly':
-            // There's no monthly option, so we'll use daily as a fallback
-            interval = RepeatInterval.daily;
+            interval = RepeatInterval.daily; // Fallback to daily
             break;
           default:
             interval = RepeatInterval.daily;
@@ -356,20 +399,48 @@ class ReminderProvider with foundation.ChangeNotifier {
           payload: payload,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         );
+        print('Repeating notification scheduled successfully');
       } else {
-        await flutterLocalNotificationsPlugin.zonedSchedule(
-          notificationId,
-          'Task Reminder',
-          'You have a task to complete',
-          scheduledDate,
-          notificationDetails,
-          payload: payload,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        );
+        print('Scheduling one-time notification');
+        
+        // For immediate reminders (less than 1 minute away), use show instead of zonedSchedule
+        if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1)))) {
+          print('Reminder is less than 1 minute away, showing immediately');
+          await flutterLocalNotificationsPlugin.show(
+            notificationId,
+            'Task Reminder',
+            'You have a task to complete',
+            notificationDetails,
+            payload: payload,
+          );
+        } else {
+          print('Scheduling future notification for: $scheduledDate');
+          await flutterLocalNotificationsPlugin.zonedSchedule(
+            notificationId,
+            'Task Reminder',
+            'You have a task to complete',
+            scheduledDate,
+            notificationDetails,
+            payload: payload,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          );
+        }
+        print('Notification scheduled successfully');
       }
     } catch (e) {
-      notifyListeners();
+      print('Error scheduling notification: $e');
     }
+  }
+
+  Future<void> toggleReminderNotification(Reminder reminder, bool enabled) async {
+    final updated = reminder.copyWith(notificationsEnabled: enabled);
+    await updateReminder(updated);
+    if (enabled) {
+      await scheduleNotification(updated);
+    } else {
+      await cancelNotification(updated.id!);
+    }
+    notifyListeners();
   }
 
   List<Reminder> getRemindersForTodo(String todoId) {
